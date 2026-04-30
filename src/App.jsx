@@ -2794,7 +2794,85 @@ const NAV=[
 ];
 const LABELS={dashboard:"Tableau de bord",agenda:"Agenda",clients:"Carnet clients",devis:"Devis & Factures",relances:"Relances",documents:"Documents",settings:"Paramètres"};
 
+// ─── Écran de connexion ──────────────────────────────────────────────────────
+const MOT_DE_PASSE = "chachou34500";
+
+function LoginScreen({onLogin}) {
+  const [pwd, setPwd] = useState("");
+  const [error, setError] = useState(false);
+  const [show, setShow] = useState(false);
+
+  const handleLogin = () => {
+    if(pwd === MOT_DE_PASSE) {
+      onLogin();
+    } else {
+      setError(true);
+      setPwd("");
+      setTimeout(()=>setError(false), 2000);
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+      background:"linear-gradient(135deg, #0d1117 0%, #161b27 50%, #1a1f2e 100%)",
+      fontFamily:"var(--font-body, sans-serif)"
+    }}>
+      <div style={{
+        background:"#161b27", border:"1px solid #252d42", borderRadius:20,
+        padding:"48px 40px", width:"100%", maxWidth:380, textAlign:"center",
+        boxShadow:"0 24px 64px #00000080"
+      }}>
+        <div style={{fontSize:"3rem", marginBottom:8}}>🔥</div>
+        <div style={{fontFamily:"serif", fontSize:"1.8rem", fontWeight:900, color:"#f97316", marginBottom:4}}>ThermoPro</div>
+        <div style={{fontSize:"0.85rem", color:"#64748b", marginBottom:32}}>Rouvet Chauffage — Accès sécurisé</div>
+
+        <div style={{position:"relative", marginBottom:16}}>
+          <input
+            type={show?"text":"password"}
+            value={pwd}
+            onChange={e=>{setPwd(e.target.value);setError(false);}}
+            onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+            placeholder="Mot de passe"
+            style={{
+              width:"100%", padding:"14px 48px 14px 16px", borderRadius:12,
+              border:`1px solid ${error?"#ef4444":"#252d42"}`,
+              background:"#0d1117", color:"#e2e8f0", fontSize:"1rem",
+              outline:"none", boxSizing:"border-box",
+              transition:"border-color .2s"
+            }}
+            autoFocus
+          />
+          <button onClick={()=>setShow(p=>!p)} style={{
+            position:"absolute", right:14, top:"50%", transform:"translateY(-50%)",
+            background:"none", border:"none", color:"#64748b", cursor:"pointer", fontSize:"1.1rem"
+          }}>{show?"🙈":"👁"}</button>
+        </div>
+
+        {error&&<div style={{color:"#ef4444", fontSize:"0.82rem", marginBottom:12}}>❌ Mot de passe incorrect</div>}
+
+        <button onClick={handleLogin} style={{
+          width:"100%", padding:"14px", borderRadius:12,
+          background:"linear-gradient(135deg, #f97316, #ea580c)",
+          border:"none", color:"#fff", fontSize:"1rem", fontWeight:700,
+          cursor:"pointer", transition:"opacity .15s"
+        }}
+          onMouseEnter={e=>e.currentTarget.style.opacity=".9"}
+          onMouseLeave={e=>e.currentTarget.style.opacity="1"}
+        >
+          Se connecter
+        </button>
+
+        <div style={{fontSize:"0.72rem", color:"#334155", marginTop:20}}>
+          ThermoPro v9 — Usage professionnel exclusif
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [loggedIn, setLoggedIn] = useState(false);
   const [page,setPage]=useState("agenda");
   const [clients,setClients]=useState(INIT_CLIENTS);
   const [rdvs,setRdvs]=useState(INIT_RDV);
@@ -2802,6 +2880,9 @@ export default function App() {
   const [devis,setDevis]=useState([]);
   const [catalogue,setCatalogue]=useState(INIT_CATALOGUE);
   const [societe,setSociete]=useState(INIT_SOCIETE);
+
+  if(!loggedIn) return <><style>{CSS}</style><LoginScreen onLogin={()=>setLoggedIn(true)}/></>;
+
 
   const nbRelances=clients.reduce((total,client)=>
     total+(client.equipements||[]).filter(equip=>{
