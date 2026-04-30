@@ -1,4 +1,38 @@
 import React, { useState, useRef, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "firebase/firestore";
+
+// ─── Firebase Config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBRSSuNVYZ9aQ5ikGeengrt7jPcO3IXl50",
+  authDomain: "thermopro-ca00a.firebaseapp.com",
+  projectId: "thermopro-ca00a",
+  storageBucket: "thermopro-ca00a.firebasestorage.app",
+  messagingSenderId: "819219960008",
+  appId: "1:819219960008:web:496bd1c21bbcf4467515fd",
+  measurementId: "G-5QW9KQ0DYM"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
+// ─── Fonctions Firebase ───────────────────────────────────────────────────────
+const USER_ID = "pierre"; // identifiant unique
+
+async function sauvegarder(collection, data) {
+  try {
+    await setDoc(doc(db, "thermopro", USER_ID, collection, "data"), { value: JSON.stringify(data) });
+  } catch(e) { console.error("Erreur sauvegarde:", e); }
+}
+
+async function charger(col) {
+  try {
+    const d = await getDoc(doc(db, "thermopro", USER_ID, col, "data"));
+    if(d.exists()) return JSON.parse(d.data().value);
+  } catch(e) { console.error("Erreur chargement:", e); }
+  return null;
+}
+
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300;600;900&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -2882,6 +2916,27 @@ export default function App() {
   const [societe,setSociete]=useState(INIT_SOCIETE);
 
   if(!loggedIn) return <><style>{CSS}</style><LoginScreen onLogin={()=>setLoggedIn(true)}/></>;
+
+  // Chargement initial depuis Firebase
+  useEffect(()=>{
+    const load = async () => {
+      const c = await charger("clients"); if(c) setClients(c);
+      const r = await charger("rdvs"); if(r) setRdvs(r);
+      const d = await charger("docs"); if(d) setDocs(d);
+      const dv = await charger("devis"); if(dv) setDevis(dv);
+      const s = await charger("societe"); if(s) setSociete(s);
+      const cat = await charger("catalogue"); if(cat) setCatalogue(cat);
+    };
+    load();
+  }, []);
+
+  // Sauvegarde automatique à chaque changement
+  useEffect(()=>{ sauvegarder("clients", clients); }, [clients]);
+  useEffect(()=>{ sauvegarder("rdvs", rdvs); }, [rdvs]);
+  useEffect(()=>{ sauvegarder("docs", docs); }, [docs]);
+  useEffect(()=>{ sauvegarder("devis", devis); }, [devis]);
+  useEffect(()=>{ sauvegarder("societe", societe); }, [societe]);
+  useEffect(()=>{ sauvegarder("catalogue", catalogue); }, [catalogue]);
 
 
   const nbRelances=clients.reduce((total,client)=>
