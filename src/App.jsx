@@ -361,7 +361,21 @@ function SignaturePad({label, onSave, existingSig}) {
   );
 }
 
-function DocWrapper({title, onClose, onMail, children}) {
+function DocWrapper({title, onClose, onMail, children, printRef}) {
+  const localRef = useRef(null);
+  const ref = printRef || localRef;
+  const handlePrint = () => {
+    const content = ref.current?.innerHTML || "";
+    const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;600;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">`;
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">${fonts}<style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'DM Sans',sans-serif;background:#fff;color:#111;}
+      @page{size:A4 portrait;margin:0;}
+    </style></head><body>${content}</body></html>`);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  };
   return (
     <div className="modal-overlay">
       <div className="modal modal-xl">
@@ -369,11 +383,13 @@ function DocWrapper({title, onClose, onMail, children}) {
           <span className="modal-title" style={{marginBottom:0}}>{title}</span>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {onMail&&<button className="btn btn-gmail btn-sm" onClick={onMail}>✉️ Gmail</button>}
-            <button className="btn btn-primary btn-sm" onClick={()=>window.print()}>🖨️ Imprimer</button>
+            <button className="btn btn-primary btn-sm" onClick={handlePrint}>🖨️ Imprimer</button>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
           </div>
         </div>
-        {children}
+        <div ref={ref}>
+          {children}
+        </div>
       </div>
     </div>
   );
