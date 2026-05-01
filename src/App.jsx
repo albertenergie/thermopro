@@ -3,13 +3,13 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBRSSuNVYZ9aQ5ikGeengrt7jPcO3IXl50",
-  authDomain: "thermopro-ca00a.firebaseapp.com",
-  projectId: "thermopro-ca00a",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
   storageBucket: "thermopro-ca00a.firebasestorage.app",
-  messagingSenderId: "819219960008",
-  appId: "1:819219960008:web:496bd1c21bbcf4467515fd",
-  measurementId: "G-5QW9KQ0DYM"
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
