@@ -1012,9 +1012,9 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const delDocLine=i=>setDocLignes(p=>p.filter((_,j)=>j!==i));
   const handleSave=()=>{
     const newDocs=[];
-    newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:selEquip,sigTech,sigClient});
-    if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient,combustion:{coAmbiant:f.coAmbiant,coFumees:f.coFumees,co2:f.co2,o2:f.o2,tempFumees:f.tempFumees,tempAir:f.tempAir,rendement:f.rendement,nox:f.nox,gicleur:f.gicleur,pressionPompe:f.pressionPompe,tempSoufflage:f.tempSoufflage,tempReprise:f.tempReprise,tempDepart:f.tempDepart,tempRetour:f.tempRetour,pression:f.pression},nonConformites:f.nonConformites||[]});
-    if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
+    newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:selEquip,sigTech,sigClient});
+    if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient,combustion:{coAmbiant:f.coAmbiant,coFumees:f.coFumees,co2:f.co2,o2:f.o2,tempFumees:f.tempFumees,tempAir:f.tempAir,rendement:f.rendement,nox:f.nox,gicleur:f.gicleur,pressionPompe:f.pressionPompe,tempSoufflage:f.tempSoufflage,tempReprise:f.tempReprise,tempDepart:f.tempDepart,tempRetour:f.tempRetour,pression:f.pression},nonConformites:f.nonConformites||[]});
+    if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
     onSave(newDocs);
   };
   return (
@@ -1315,7 +1315,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue}) {
         {selRdvs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
         {selRdvs.map(r=>{
           const c=clients.find(x=>x.id===r.clientId);
-          const rdvDocs=docs.filter(d=>d.rdvId===r.id);
+          const rdvDocs=docs.filter(d=>d.rdvId===r.id||(d.clientId===r.clientId&&!d.rdvId&&d.date===r.date));
           return(<div key={r.id} className="rdv-row">
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
