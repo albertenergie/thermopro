@@ -368,7 +368,6 @@ function DocWrapper({title, onClose, onMail, children}) {
   const handlePDF = async () => {
     setGenerating(true);
     try {
-      // Charger dynamiquement html2canvas et jsPDF
       await Promise.all([
         new Promise(resolve => {
           if(window.html2canvas){resolve();return;}
@@ -383,36 +382,65 @@ function DocWrapper({title, onClose, onMail, children}) {
           s.onload=resolve; document.head.appendChild(s);
         })
       ]);
-      const el = ref.current;
-      const canvas = await window.html2canvas(el, {scale:2, useCORS:true, backgroundColor:"#ffffff", logging:false});
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+
+      // Créer un conteneur A4 temporaire hors écran
+      const A4_PX = 794; // 210mm à 96dpi
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_PX}px;background:#fff;z-index:-1;`;
+      wrapper.innerHTML = ref.current.innerHTML;
+      // Forcer les styles A4 sur la page
+      const style = document.createElement("style");
+      style.textContent = `
+        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:40px 50px!important;font-size:8pt!important;}
+        .a4-g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
+        .a4-g4{display:grid!important;grid-template-columns:1fr 1fr 1fr 1fr!important;gap:8px!important;}
+        .a4-checks{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px!important;}
+        .a4-sig{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
+        .a4-comb{display:flex!important;flex-wrap:wrap!important;gap:6px!important;}
+        .a4-ci{flex:1!important;min-width:80px!important;}
+        .a4-rend{display:grid!important;grid-template-columns:1fr 1fr!important;}
+      `;
+      wrapper.appendChild(style);
+      document.body.appendChild(wrapper);
+
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = await window.html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: A4_PX,
+        windowWidth: A4_PX
+      });
+
+      document.body.removeChild(wrapper);
+
       const {jsPDF} = window.jspdf;
       const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
+      const pdfW = 210; // mm
+      const pdfH = 297; // mm
       const imgW = canvas.width;
       const imgH = canvas.height;
-      const ratio = imgW / imgH;
-      const pageH = pdfW / ratio;
-      let y = 0;
-      let remaining = imgH;
-      while(remaining > 0) {
-        const sliceH = Math.min(remaining, imgH * (pdfH / pageH));
-        const tmpCanvas = document.createElement("canvas");
-        tmpCanvas.width = imgW;
-        tmpCanvas.height = sliceH;
-        const ctx = tmpCanvas.getContext("2d");
-        ctx.drawImage(canvas, 0, y, imgW, sliceH, 0, 0, imgW, sliceH);
-        const sliceData = tmpCanvas.toDataURL("image/jpeg", 0.95);
-        if(y > 0) pdf.addPage();
-        pdf.addImage(sliceData, "JPEG", 0, 0, pdfW, Math.min(pdfH, pdfW * sliceH / imgW));
-        y += sliceH;
-        remaining -= sliceH;
+      // Hauteur en mm d'une page A4 en pixels
+      const pageHeightPx = imgW * (pdfH / pdfW);
+      let yPx = 0;
+      let page = 0;
+      while(yPx < imgH) {
+        const sliceH = Math.min(pageHeightPx, imgH - yPx);
+        const tmp = document.createElement("canvas");
+        tmp.width = imgW;
+        tmp.height = sliceH;
+        tmp.getContext("2d").drawImage(canvas, 0, yPx, imgW, sliceH, 0, 0, imgW, sliceH);
+        if(page > 0) pdf.addPage();
+        pdf.addImage(tmp.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pdfW, sliceH * pdfW / imgW);
+        yPx += sliceH;
+        page++;
       }
       const nom = title.replace(/[^a-zA-Z0-9]/g, "-");
       pdf.save(`${nom}.pdf`);
     } catch(e) {
-      alert("Erreur génération PDF : " + e.message);
+      alert("Erreur PDF : " + e.message);
     }
     setGenerating(false);
   };
