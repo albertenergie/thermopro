@@ -384,14 +384,14 @@ function DocWrapper({title, onClose, onMail, children}) {
       ]);
 
       // Créer un conteneur A4 temporaire hors écran
-      const A4_PX = 794; // 210mm à 96dpi
+      const A4_PX = 750;
       const wrapper = document.createElement("div");
       wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_PX}px;background:#fff;z-index:-1;`;
       wrapper.innerHTML = ref.current.innerHTML;
       // Forcer les styles A4 sur la page
       const style = document.createElement("style");
       style.textContent = `
-        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:40px 50px!important;font-size:8pt!important;}
+        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:30px 36px!important;font-size:8pt!important;}
         .a4-g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
         .a4-g4{display:grid!important;grid-template-columns:1fr 1fr 1fr 1fr!important;gap:8px!important;}
         .a4-checks{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px!important;}
