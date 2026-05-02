@@ -591,7 +591,7 @@ function DocBon({doc, client, societe, onClose}) {
     .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={client?.email?()=>sendGmail(client.email,`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n${doc.observations||""}`):null}>
+    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendGmail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n${doc.observations||""}`)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -725,7 +725,7 @@ function DocAttestation({doc, client, societe, onClose}) {
     .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={client?.email?()=>sendGmail(client.email,`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`):null}>
+    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendGmail(client?.email||"",`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -1013,7 +1013,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const handleSave=()=>{
     const newDocs=[];
     newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:selEquip,sigTech,sigClient});
-    if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient});
+    if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient,combustion:{coAmbiant:f.coAmbiant,coFumees:f.coFumees,co2:f.co2,o2:f.o2,tempFumees:f.tempFumees,tempAir:f.tempAir,rendement:f.rendement,nox:f.nox,gicleur:f.gicleur,pressionPompe:f.pressionPompe,tempSoufflage:f.tempSoufflage,tempReprise:f.tempReprise,tempDepart:f.tempDepart,tempRetour:f.tempRetour,pression:f.pression},nonConformites:f.nonConformites||[]});
     if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
     onSave(newDocs);
   };
@@ -1352,6 +1352,13 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
   const delClient=id=>{if(confirm("Supprimer ?"))setClients(p=>p.filter(c=>c.id!==id));if(detail?.id===id)setDetail(null);};
   const isAtt=t=>t?.startsWith("Attestation");
   const openPreview=doc=>{const c=clients.find(x=>x.id===doc.clientId);setPreview({doc,client:c});};
+
+  if(preview) {
+    const {doc,client}=preview;
+    return isAtt(doc.type)
+      ? <DocAttestation doc={doc} client={client} societe={societe} onClose={()=>setPreview(null)}/>
+      : <DocBon doc={doc} client={client} societe={societe} onClose={()=>setPreview(null)}/>;
+  }
 
   if(detail) {
     const clientDocs=docs.filter(d=>d.clientId===detail.id);
