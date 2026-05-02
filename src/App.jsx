@@ -739,10 +739,11 @@ function DocAttestation({doc, client, societe, onClose}) {
 
         <div className="a4-title">ATTESTATION D'ENTRETIEN — {typeLabel}</div>
 
-        <div className="a4-g2" style={{marginBottom:"3mm"}}>
+        {/* CLIENT + APPAREIL */}
+        <div className="a4-g2" style={{marginBottom:"2.5mm"}}>
           <div className="a4-box">
-            <div className="a4-sec-t">Propriétaire</div>
-            <div className="a4-f" style={{marginBottom:"2mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
+            <div className="a4-sec-t">Client</div>
+            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
             <div className="a4-f"><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
           </div>
           <div className="a4-box">
@@ -756,107 +757,114 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
         </div>
 
-        <div className="a4-g2" style={{marginBottom:"3mm"}}>
+        {/* DATE + ÉTAT */}
+        <div className="a4-g2" style={{marginBottom:"2.5mm"}}>
           <div className="a4-f"><label>Date d'entretien</label><div className="v">{fmt(doc.date)}</div></div>
           <div className="a4-f"><label>État général</label><div className="v"><span className="a4-etat">✓ Bon état de fonctionnement</span></div></div>
         </div>
 
-        {!isClim&&!isPac&&<div className="a4-sec">
-          <div className="a4-sec-t">Mesures de combustion{isFioul?" & Brûleur":""}</div>
-          <div className="a4-comb">
-            <div className="a4-ci"><div className="cl">CO Ambiant</div><div className="cv">{comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
-            <div className="a4-ci"><div className="cl">CO Fumées</div><div className="cv">{comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
-            <div className="a4-ci"><div className="cl">CO₂</div><div className="cv">{comb.co2||"—"}</div><div className="cu">%</div></div>
-            <div className="a4-ci"><div className="cl">O₂</div><div className="cv">{comb.o2||"—"}</div><div className="cu">%</div></div>
-            <div className="a4-ci"><div className="cl">Temp. fumées</div><div className="cv">{comb.tempFumees||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Air comburant</div><div className="cv">{comb.tempAir||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Rendement PCI</div><div className="cv">{comb.rendement||"—"}</div><div className="cu">%</div></div>
-            <div className="a4-ci"><div className="cl">NOx</div><div className="cv">{comb.nox||"—"}</div><div className="cu">mg/kWh</div></div>
-            {isFioul&&<><div className="a4-ci"><div className="cl">Gicleur</div><div className="cv">{comb.gicleur||equip.debitGicleur||"—"}</div><div className="cu">{equip.angleGicleur||""}</div></div>
-            <div className="a4-ci"><div className="cl">Pression pompe</div><div className="cv">{comb.pressionPompe||"—"}</div><div className="cu">bar</div></div></>}
-          </div>
-        </div>}
+        {/* LAYOUT 2 COLONNES */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3mm",marginBottom:"2.5mm"}}>
 
-        {(isClim||isPac)&&<div className="a4-sec">
-          <div className="a4-sec-t">Mesures températures / pression</div>
-          <div className="a4-comb">
-            {isClim&&<><div className="a4-ci"><div className="cl">Temp. soufflage</div><div className="cv">{comb.tempSoufflage||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Temp. reprise</div><div className="cv">{comb.tempReprise||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Écart ΔT</div><div className="cv">{comb.tempSoufflage&&comb.tempReprise?Math.abs(Number(comb.tempReprise)-Number(comb.tempSoufflage)):"—"}</div><div className="cu">°C</div></div></>}
-            {isPac&&<><div className="a4-ci"><div className="cl">Temp. départ eau</div><div className="cv">{comb.tempDepart||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Temp. retour eau</div><div className="cv">{comb.tempRetour||"—"}</div><div className="cu">°C</div></div>
-            <div className="a4-ci"><div className="cl">Pression circuit</div><div className="cv">{comb.pression||"—"}</div><div className="cu">bar</div></div></>}
-          </div>
-        </div>}
-
-        {!isClim&&!isPac&&<div className="a4-g2" style={{marginBottom:"3mm"}}>
-          <div className="a4-sec">
-            <div className="a4-sec-t">Rendement sur PCI à puissance nominale</div>
-            <div className="a4-rend">
-              <div><label>Rendement évalué</label><div className="v">{comb.rendement||"—"} %</div></div>
-              <div><label>Rendement de référence</label><div className="v">{isFioul?"85,0":"93,0"} %</div></div>
-            </div>
-          </div>
-          <div className="a4-sec">
-            <div className="a4-sec-t">Émissions polluants (mg/kWh à 0% O₂)</div>
-            <div className="a4-rend">
-              <div><label>NOx évalués</label><div className="v">{comb.nox||"—"}</div></div>
-              <div><label>NOx de référence</label><div className="v">35</div></div>
-            </div>
-          </div>
-        </div>}
-
-        {!isClim&&!isPac&&<div className="a4-sec">
-          <div className="a4-sec-t">Classification énergétique (chaudières avant sept. 2015)</div>
-          <table className="a4-classif">
-            <thead><tr><th>Classe de rendement</th><th>Date de fabrication</th><th>Classe énergétique</th></tr></thead>
-            <tbody>
-              <tr><td>Standard ou basse température</td><td>Avant 2005</td><td><span className="a4-badge-cls">D</span></td></tr>
-              <tr><td>Standard ou basse température</td><td>Après 2005</td><td><span className="a4-badge-cls">C</span></td></tr>
-              <tr><td>Condensation</td><td>Avant 2005</td><td><span className="a4-badge-cls">B</span></td></tr>
-              <tr><td>Condensation</td><td>Après 2005</td><td><span className="a4-badge-cls" style={{background:"#2e7d32"}}>A</span></td></tr>
-            </tbody>
-          </table>
-        </div>}
-
-        <div className="a4-sec">
-          <div className="a4-sec-t">Points de vérification</div>
-          <div className="a4-checks">
-            {checkList.map((c,i)=>(
-              <div key={i} className="a4-chk">
-                <div className={`a4-chkbox${checks[i]==="ok"?" ok":checks[i]==="nok"?" nok":checks[i]==="na"?" na":""}`}>
-                  {checks[i]==="ok"?"✓":checks[i]==="nok"?"✗":checks[i]==="na"?"–":""}
-                </div>
-                <span>{c}</span>
+          {/* COLONNE GAUCHE : Checks + Travaux */}
+          <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
+            <div className="a4-sec">
+              <div className="a4-sec-t">Points de vérification</div>
+              <div className="a4-checks">
+                {checkList.map((c,i)=>(
+                  <div key={i} className="a4-chk">
+                    <div className={`a4-chkbox${checks[i]==="ok"?" ok":checks[i]==="nok"?" nok":checks[i]==="na"?" na":""}`}>
+                      {checks[i]==="ok"?"✓":checks[i]==="nok"?"✗":checks[i]==="na"?"–":""}
+                    </div>
+                    <span>{c}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            <div className="a4-sec">
+              <div className="a4-sec-t">Travaux réalisés & Observations</div>
+              <div className="a4-travaux">{doc.observations||""}</div>
+            </div>
+          </div>
+
+          {/* COLONNE DROITE : Mesures + Rendement + Classif + Non-conf */}
+          <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
+
+            {!isClim&&!isPac&&<div className="a4-sec">
+              <div className="a4-sec-t">Mesures de combustion{isFioul?" & Brûleur":""}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.5mm",marginBottom:"1.5mm"}}>
+                <div className="a4-ci"><div className="cl">CO Amb.</div><div className="cv">{comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
+                <div className="a4-ci"><div className="cl">CO Fum.</div><div className="cv">{comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
+                <div className="a4-ci"><div className="cl">CO₂</div><div className="cv">{comb.co2||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">O₂</div><div className="cv">{comb.o2||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">T. fumées</div><div className="cv">{comb.tempFumees||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Air comb.</div><div className="cv">{comb.tempAir||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Rdt PCI</div><div className="cv">{comb.rendement||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">NOx</div><div className="cv">{comb.nox||"—"}</div><div className="cu">mg/kWh</div></div>
+                {isFioul&&<><div className="a4-ci"><div className="cl">Gicleur</div><div className="cv">{comb.gicleur||equip.debitGicleur||"—"}</div><div className="cu">{equip.angleGicleur||""}</div></div>
+                <div className="a4-ci"><div className="cl">P. pompe</div><div className="cv">{comb.pressionPompe||"—"}</div><div className="cu">bar</div></div></>}
+              </div>
+            </div>}
+
+            {(isClim||isPac)&&<div className="a4-sec">
+              <div className="a4-sec-t">Mesures</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.5mm"}}>
+                {isClim&&<><div className="a4-ci"><div className="cl">T. soufflage</div><div className="cv">{comb.tempSoufflage||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">T. reprise</div><div className="cv">{comb.tempReprise||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Écart ΔT</div><div className="cv">{comb.tempSoufflage&&comb.tempReprise?Math.abs(Number(comb.tempReprise)-Number(comb.tempSoufflage)):"—"}</div><div className="cu">°C</div></div></>}
+                {isPac&&<><div className="a4-ci"><div className="cl">T. départ</div><div className="cv">{comb.tempDepart||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">T. retour</div><div className="cv">{comb.tempRetour||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Pression</div><div className="cv">{comb.pression||"—"}</div><div className="cu">bar</div></div></>}
+              </div>
+            </div>}
+
+            {!isClim&&!isPac&&<div className="a4-sec">
+              <div className="a4-sec-t">Rendement PCI & NOx</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1.5mm",marginBottom:"1.5mm"}}>
+                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Rdt évalué</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{comb.rendement||"—"} %</div></div>
+                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Rdt référence</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{isFioul?"85,0":"93,0"} %</div></div>
+                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>NOx évalués</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{comb.nox||"—"} mg/kWh</div></div>
+                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>NOx référence</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>35 mg/kWh</div></div>
+              </div>
+            </div>}
+
+            {!isClim&&!isPac&&<div className="a4-sec">
+              <div className="a4-sec-t">Classification énergétique (avant sept. 2015)</div>
+              <table className="a4-classif">
+                <thead><tr><th>Classe</th><th>Fabrication</th><th>Énergie</th></tr></thead>
+                <tbody>
+                  <tr><td>Standard / basse T°</td><td>Avant 2005</td><td><span className="a4-badge-cls">D</span></td></tr>
+                  <tr><td>Standard / basse T°</td><td>Après 2005</td><td><span className="a4-badge-cls">C</span></td></tr>
+                  <tr><td>Condensation</td><td>Avant 2005</td><td><span className="a4-badge-cls">B</span></td></tr>
+                  <tr><td>Condensation</td><td>Après 2005</td><td><span className="a4-badge-cls" style={{background:"#2e7d32"}}>A</span></td></tr>
+                </tbody>
+              </table>
+            </div>}
+
+            {/* NON-CONFORMITÉS dans colonne droite */}
+            <div className="a4-sec">
+              <div className="a4-sec-t">Non-conformités éventuelles</div>
+              <div className="a4-nonconf">
+                {nonConf.length>0
+                  ? <><div className="a4-nonconf-t" style={{color:"#c62828"}}>⚠ Anomalie(s) détectée(s)</div>{nonConf.map((n,i)=><div key={i} className="a4-nonconf-txt">• {n}</div>)}</>
+                  : <><div className="a4-nonconf-t" style={{color:"#2e7d32"}}>✓ Aucune non-conformité détectée</div><div className="a4-nonconf-txt">L'installation est conforme aux exigences réglementaires en vigueur.</div></>
+                }
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div className="a4-sec">
-          <div className="a4-sec-t">Travaux réalisés & Observations</div>
-          <div className="a4-travaux">{doc.observations||""}</div>
-        </div>
-
-        <div className="a4-sec">
-          <div className="a4-sec-t">Non-conformités éventuelles</div>
-          <div className="a4-nonconf">
-            {nonConf.length>0
-              ? <><div className="a4-nonconf-t" style={{color:"#c62828"}}>⚠ Anomalie(s) détectée(s)</div>{nonConf.map((n,i)=><div key={i} className="a4-nonconf-txt">• {n}</div>)}</>
-              : <><div className="a4-nonconf-t" style={{color:"#2e7d32"}}>✓ Aucune non-conformité détectée</div><div className="a4-nonconf-txt">L'installation est conforme aux exigences réglementaires en vigueur.</div></>
-            }
-          </div>
-        </div>
-
+        {/* SIGNATURES en bas sur toute la largeur */}
         <div className="a4-sig">
           <div className="a4-sig-box">
             <div className="a4-sig-label">Technicien</div>
-            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:45,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:40,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
             <div className="a4-sig-line">{societe.technicien} — {societe.nom}</div>
           </div>
           <div className="a4-sig-box">
             <div className="a4-sig-label">Client — Bon pour accord</div>
-            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:45,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:40,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
             <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
