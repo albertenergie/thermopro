@@ -1348,7 +1348,16 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
     const matchFilter=filterEquip==="Tous"||(c.equipements||[]).some(e=>e.type===filterEquip);
     return matchSearch&&matchFilter;
   });
-  const saveClient=f=>{if(modal?.mode==="new")setClients(p=>[...p,{...f,id:newId(p)}]);else setClients(p=>p.map(c=>c.id===modal.client.id?{...f,id:c.id}:c));setModal(null);};
+  const saveClient=f=>{
+    if(modal?.mode==="new"){
+      const newClient={...f,id:newId(clients)};
+      setClients(p=>[...p,newClient]);
+    } else {
+      setClients(p=>p.map(c=>c.id===modal.client.id?{...f,id:c.id}:c));
+      if(detail?.id===modal.client.id) setDetail({...f,id:modal.client.id});
+    }
+    setModal(null);
+  };
   const delClient=id=>{if(confirm("Supprimer ?"))setClients(p=>p.filter(c=>c.id!==id));if(detail?.id===id)setDetail(null);};
   const isAtt=t=>t?.startsWith("Attestation");
   const openPreview=doc=>{const c=clients.find(x=>x.id===doc.clientId);setPreview({doc,client:c});};
