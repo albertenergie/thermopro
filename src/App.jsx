@@ -894,8 +894,62 @@ function EquipForm({equip, onChange, onDelete, index}) {
       </div>
       <div className="form-grid">
         <div className="form-group full"><label>Type</label><select value={equip.type} onChange={e=>onChange({...equip,type:e.target.value})}>{TYPES_EQUIP.map(t=><option key={t}>{t}</option>)}</select></div>
-        {isClim&&<><div className="form-group"><label>Marque</label><select value={equip.marqueClim||""} onChange={e=>s("marqueClim",e.target.value)}><option value="">—</option>{MARQUES_CLIM.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Type</label><select value={equip.typeClim||"Simple split"} onChange={e=>s("typeClim",e.target.value)}>{TYPES_CLIM.map(t=><option key={t}>{t}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerieClim||""} onChange={e=>s("numSerieClim",e.target.value)}/></div><div className="form-group"><label>Puissance (kW)</label><input value={equip.puissanceClim||""} onChange={e=>s("puissanceClim",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.anneeClim||""} onChange={e=>s("anneeClim",e.target.value)}/></div></>}
-        {isPac&&<><div className="form-group"><label>Marque</label><select value={equip.marquePac||""} onChange={e=>s("marquePac",e.target.value)}><option value="">—</option>{MARQUES_PAC.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modelePac||""} onChange={e=>s("modelePac",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSeriePac||""} onChange={e=>s("numSeriePac",e.target.value)}/></div><div className="form-group"><label>Puissance (kW)</label><input value={equip.puissancePac||""} onChange={e=>s("puissancePac",e.target.value)}/></div><div className="form-group"><label>COP</label><input value={equip.copPac||""} onChange={e=>s("copPac",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.anneePac||""} onChange={e=>s("anneePac",e.target.value)}/></div></>}
+        {isClim&&<>
+          <div className="form-group full">
+            <label>Type de climatisation</label>
+            <select value={equip.typeClim||"Simple split"} onChange={e=>{
+              const t=e.target.value;
+              const nbInt=t==="Bi-split"?2:t==="Tri-split"?3:1;
+              const ints=Array.from({length:nbInt},(_,i)=>equip.unitesInt?.[i]||{emplacement:"",modele:"",numSerie:"",puissance:""});
+              onChange({...equip,typeClim:t,unitesInt:ints});
+            }}>
+              {TYPES_CLIM.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><select value={equip.marqueClim||""} onChange={e=>s("marqueClim",e.target.value)}><option value="">—</option>{MARQUES_CLIM.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div className="form-group"><label>Modèle</label><input value={equip.modeleExt||""} onChange={e=>s("modeleExt",e.target.value)}/></div>
+              <div className="form-group"><label>N° série</label><input value={equip.numSerieExt||""} onChange={e=>s("numSerieExt",e.target.value)}/></div>
+              <div className="form-group"><label>Puissance (kW)</label><input value={equip.puissanceClim||""} onChange={e=>s("puissanceClim",e.target.value)}/></div>
+              <div className="form-group"><label>Année</label><input value={equip.anneeClim||""} onChange={e=>s("anneeClim",e.target.value)}/></div>
+            </div>
+          </div>
+          {(equip.unitesInt||[{emplacement:"",modele:"",numSerie:"",puissance:""}]).map((ui,i)=>(
+            <div key={i} className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
+              <div className="form-grid">
+                <div className="form-group"><label>Emplacement / Pièce</label><input value={ui.emplacement||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],emplacement:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
+                <div className="form-group"><label>Modèle</label><input value={ui.modele||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],modele:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
+                <div className="form-group"><label>N° série</label><input value={ui.numSerie||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],numSerie:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
+                <div className="form-group"><label>Puissance (kW)</label><input value={ui.puissance||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],puissance:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
+              </div>
+            </div>
+          ))}
+        </>}
+        {isPac&&<>
+          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><select value={equip.marquePac||""} onChange={e=>s("marquePac",e.target.value)}><option value="">—</option>{MARQUES_PAC.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div className="form-group"><label>Modèle</label><input value={equip.modelePac||""} onChange={e=>s("modelePac",e.target.value)}/></div>
+              <div className="form-group"><label>N° série</label><input value={equip.numSeriePac||""} onChange={e=>s("numSeriePac",e.target.value)}/></div>
+              <div className="form-group"><label>Puissance (kW)</label><input value={equip.puissancePac||""} onChange={e=>s("puissancePac",e.target.value)}/></div>
+              <div className="form-group"><label>COP</label><input value={equip.copPac||""} onChange={e=>s("copPac",e.target.value)}/></div>
+              <div className="form-group"><label>Année</label><input value={equip.anneePac||""} onChange={e=>s("anneePac",e.target.value)}/></div>
+              <div className="form-group"><label>Fluide frigorigène</label><input value={equip.fluidePac||""} onChange={e=>s("fluidePac",e.target.value)}/></div>
+            </div>
+          </div>
+          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🏠 Unité intérieure</div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><input value={equip.marqueIntPac||""} onChange={e=>s("marqueIntPac",e.target.value)}/></div>
+              <div className="form-group"><label>Modèle</label><input value={equip.modeleIntPac||""} onChange={e=>s("modeleIntPac",e.target.value)}/></div>
+              <div className="form-group"><label>N° série</label><input value={equip.numSerieIntPac||""} onChange={e=>s("numSerieIntPac",e.target.value)}/></div>
+            </div>
+          </div>
+        </>}
         {isChaud&&<><div className="form-group"><label>Marque</label><select value={equip.marque||""} onChange={e=>s("marque",e.target.value)}><option value="">—</option>{MARQUES_CHAUDIERE.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div></>}
         {isFioul&&<><div className="form-group"><label>Marque brûleur</label><input value={equip.marqueBruleur||""} onChange={e=>s("marqueBruleur",e.target.value)}/></div><div className="form-group"><label>Modèle brûleur</label><input value={equip.modeleBruleur||""} onChange={e=>s("modeleBruleur",e.target.value)}/></div><div className="form-group"><label>Marque gicleur</label><select value={equip.marqueGicleur||"Steinen"} onChange={e=>s("marqueGicleur",e.target.value)}>{MARQUES_GICLEUR.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Débit (gal/h)</label><input value={equip.debitGicleur||""} onChange={e=>s("debitGicleur",e.target.value)}/></div><div className="form-group"><label>Angle</label><select value={equip.angleGicleur||"60°"} onChange={e=>s("angleGicleur",e.target.value)}>{ANGLES_GICLEUR.map(a=><option key={a}>{a}</option>)}</select></div><div className="form-group"><label>Spectre</label><select value={equip.spectreGicleur||"S (solide)"} onChange={e=>s("spectreGicleur",e.target.value)}>{SPECTRES_GICLEUR.map(sp=><option key={sp}>{sp}</option>)}</select></div></>}
         <div style={{gridColumn:"1/-1",marginTop:6,fontSize:"0.75rem",fontWeight:700,color:"var(--muted)",textTransform:"uppercase",borderTop:"1px solid var(--border)",paddingTop:12}}>📄 Contrat</div>
@@ -908,9 +962,13 @@ function EquipForm({equip, onChange, onDelete, index}) {
 }
 
 function ModalClient({client, onSave, onClose}) {
-  const blank={nom:"",prenom:"",adresse:"",codePostal:"",ville:"",tel:"",email:"",type:"Particulier",equipements:[newEquip("Chaudière gaz")],notes:"",photos:[]};
-  const [f,setF]=useState(client?{...client,equipements:client.equipements||[newEquip("Chaudière gaz")],photos:client.photos||[]}:blank);
+  const blank={nom:"",prenom:"",adresse:"",codePostal:"",ville:"",tel:"",tels:[{type:"Mobile",numero:""}],email:"",type:"Particulier",statut:"Proprietaire",proprietaire:{nom:"",prenom:"",adresse:"",tel:"",email:""},equipements:[newEquip("Chaudière gaz")],notes:"",photos:[]};
+  const [f,setF]=useState(client?{...client,tels:client.tels||[{type:"Mobile",numero:client.tel||""}],statut:client.statut||"Proprietaire",proprietaire:client.proprietaire||{nom:"",prenom:"",adresse:"",tel:"",email:""},equipements:client.equipements||[newEquip("Chaudière gaz")],photos:client.photos||[]}:blank);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const sp=(k,v)=>setF(p=>({...p,proprietaire:{...p.proprietaire,[k]:v}}));
+  const addTel=()=>setF(p=>({...p,tels:[...p.tels,{type:"Mobile",numero:""}]}));
+  const delTel=i=>setF(p=>({...p,tels:p.tels.filter((_,j)=>j!==i)}));
+  const updateTel=(i,k,v)=>setF(p=>{const t=[...p.tels];t[i]={...t[i],[k]:v};return{...p,tels:t};});
   const addEquip=(type)=>setF(p=>({...p,equipements:[...p.equipements,newEquip(type)]}));
   const updateEquip=(i,e)=>setF(p=>{const eq=[...p.equipements];eq[i]=e;return{...p,equipements:eq};});
   const delEquip=(i)=>setF(p=>({...p,equipements:p.equipements.filter((_,j)=>j!==i)}));
@@ -926,17 +984,61 @@ function ModalClient({client, onSave, onClose}) {
         <div className="form-group full"><label>Adresse</label><input value={f.adresse} onChange={e=>s("adresse",e.target.value)}/></div>
         <div className="form-group"><label>Code postal</label><input value={f.codePostal||""} onChange={e=>s("codePostal",e.target.value)}/></div>
         <div className="form-group"><label>Ville</label><input value={f.ville||""} onChange={e=>s("ville",e.target.value)}/></div>
-        <div className="form-group"><label>Téléphone</label><input value={f.tel} onChange={e=>s("tel",e.target.value)}/></div>
         <div className="form-group"><label>Email</label><input value={f.email} onChange={e=>s("email",e.target.value)}/></div>
         <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Particulier</option><option>Professionnel</option><option>Copropriété</option></select></div>
+      </div>
+
+      {/* TÉLÉPHONES */}
+      <div style={{margin:"12px 0",background:"var(--surface2)",borderRadius:10,padding:14}}>
+        <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>📞 Téléphones</div>
+        {(f.tels||[]).map((t,i)=>(
+          <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+            <select value={t.type} onChange={e=>updateTel(i,"type",e.target.value)} style={{width:100,flexShrink:0}}>
+              <option>Mobile</option><option>Fixe</option><option>Pro</option>
+            </select>
+            <input value={t.numero} onChange={e=>updateTel(i,"numero",e.target.value)} placeholder="06 XX XX XX XX" style={{flex:1}}/>
+            {i>0&&<button className="btn btn-danger btn-sm" onClick={()=>delTel(i)}>✕</button>}
+          </div>
+        ))}
+        <button className="btn btn-secondary btn-sm" onClick={addTel}>+ Ajouter un téléphone</button>
+      </div>
+
+      {/* STATUT OCCUPANT */}
+      <div style={{margin:"12px 0",background:"var(--surface2)",borderRadius:10,padding:14}}>
+        <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>🏠 Statut occupant</div>
+        <div style={{display:"flex",gap:20,marginBottom:12}}>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontWeight:f.statut==="Proprietaire"?600:400}}>
+            <input type="radio" name="statut" checked={f.statut==="Proprietaire"} onChange={()=>s("statut","Proprietaire")}/> Propriétaire
+          </label>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontWeight:f.statut==="Locataire"?600:400}}>
+            <input type="radio" name="statut" checked={f.statut==="Locataire"} onChange={()=>s("statut","Locataire")}/> Locataire
+          </label>
+        </div>
+        {f.statut==="Locataire"&&<div style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+          <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>Coordonnées du propriétaire</div>
+          <div className="form-grid">
+            <div className="form-group"><label>Prénom</label><input value={f.proprietaire.prenom||""} onChange={e=>sp("prenom",e.target.value)}/></div>
+            <div className="form-group"><label>Nom</label><input value={f.proprietaire.nom||""} onChange={e=>sp("nom",e.target.value)}/></div>
+            <div className="form-group full"><label>Adresse</label><input value={f.proprietaire.adresse||""} onChange={e=>sp("adresse",e.target.value)}/></div>
+            <div className="form-group"><label>Téléphone</label><input value={f.proprietaire.tel||""} onChange={e=>sp("tel",e.target.value)}/></div>
+            <div className="form-group"><label>Email</label><input value={f.proprietaire.email||""} onChange={e=>sp("email",e.target.value)}/></div>
+          </div>
+        </div>}
+      </div>
+
+      <div className="form-grid">
         <div className="form-group full"><label>Notes</label><textarea value={f.notes||""} onChange={e=>s("notes",e.target.value)} style={{minHeight:44}}/></div>
       </div>
+
+      {/* PHOTOS */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"16px 0 10px"}}>
-        <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)"}}>📷 Photos ({(f.photos||[]).length}/5)</div>
+        <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)"}}> 📷 Photos ({(f.photos||[]).length}/5)</div>
         {(f.photos||[]).length<5&&<button className="btn btn-secondary btn-sm" onClick={()=>photoInputRef.current?.click()}>📷 Ajouter</button>}
       </div>
       <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handlePhoto}/>
       {(f.photos||[]).length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:14}}>{f.photos.map((p,i)=><div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",aspectRatio:"1",border:"1px solid var(--border)"}}><img src={p.url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>delPhoto(i)} style={{position:"absolute",top:4,right:4,width:22,height:22,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",cursor:"pointer",fontSize:"0.7rem"}}>✕</button></div>)}</div>}
+
+      {/* ÉQUIPEMENTS */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"16px 0 12px"}}>
         <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)"}}>Équipements ({f.equipements.length})</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{TYPES_EQUIP.map(t=><button key={t} className="btn btn-secondary btn-sm" onClick={()=>addEquip(t)}>{EQUIP_ICON(t)} +</button>)}</div>
@@ -987,18 +1089,21 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const [step,setStep]=useState(1);
   const [typeDoc,setTypeDoc]=useState(null);
   const [selectedEquipIdx,setSelectedEquipIdx]=useState(0);
+  const [selectedEquipIdxs,setSelectedEquipIdxs]=useState([]);
   const [sigTech,setSigTech]=useState(null);
   const [sigClient,setSigClient]=useState(null);
   const numAuto=`${new Date().getFullYear()}-${String(Math.floor(Math.random()*9000)+1000)}`;
   const equips=client.equipements||[];
   const selEquip=equips[selectedEquipIdx]||{};
   const isSelClim=selEquip.type==="Climatisation";
+  const isSelPac=selEquip.type==="Pompe à chaleur";
   const [f,setF]=useState({clientId:client.id,numero:numAuto,date:rdv.date,tva:10,statut:"Émise",lignes:[],observations:"",piecesChangees:"",heureArrivee:"",heureDepart:"",typeIntervention:rdv.type,combustible:selEquip.type==="Chaudière fioul"?"Fioul":"Gaz",checks:{}});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const setCheck=(i,v)=>setF(p=>({...p,checks:{...p.checks,[i]:p.checks[i]===v?undefined:v}}));
-  const checkList=typeDoc==="Attestation Clim"?CHECKS_CLIM:f.combustible==="Fioul"?CHECKS_FIOUL:CHECKS_GAZ;
+  const checkList=typeDoc==="Attestation Clim"?CHECKS_CLIM:typeDoc==="Attestation PAC"?CHECKS_PAC:f.combustible==="Fioul"?CHECKS_FIOUL:CHECKS_GAZ;
   const isAtt=typeDoc?.startsWith("Attestation");
   const isClim=typeDoc==="Attestation Clim";
+  const isPac=typeDoc==="Attestation PAC";
   const [docTab,setDocTab]=useState("facture");
   const [docLignes,setDocLignes]=useState([]);
   const [docObjet,setDocObjet]=useState("");
@@ -1010,10 +1115,26 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const addFromCatWizard=item=>setDocLignes(p=>[...p,{designation:item.designation,qte:1,pu:item.pu,tva:item.tva,unite:item.unite}]);
   const setDocLine=(i,k,v)=>setDocLignes(p=>{const l=[...p];l[i]={...l[i],[k]:v};return l;});
   const delDocLine=i=>setDocLignes(p=>p.filter((_,j)=>j!==i));
+
+  const toggleEquipSel=i=>setSelectedEquipIdxs(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i]);
+
+  const getAttType=eq=>{
+    if(eq.type==="Climatisation") return "Attestation Clim";
+    if(eq.type==="Pompe à chaleur") return "Attestation PAC";
+    if(eq.type==="Chaudière fioul") return "Attestation Fioul";
+    return "Attestation Gaz";
+  };
+
   const handleSave=()=>{
     const newDocs=[];
     newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:selEquip,sigTech,sigClient});
     if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient,combustion:{coAmbiant:f.coAmbiant,coFumees:f.coFumees,co2:f.co2,o2:f.o2,tempFumees:f.tempFumees,tempAir:f.tempAir,rendement:f.rendement,nox:f.nox,gicleur:f.gicleur,pressionPompe:f.pressionPompe,tempSoufflage:f.tempSoufflage,tempReprise:f.tempReprise,tempDepart:f.tempDepart,tempRetour:f.tempRetour,pression:f.pression},nonConformites:f.nonConformites||[]});
+    // Attestations supplémentaires pour les équipements cochés
+    selectedEquipIdxs.forEach((idx,i)=>{
+      const eq=equips[idx];
+      const attType=getAttType(eq);
+      newDocs.push({type:attType,numero:`ATT-${f.numero}-${i+2}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:eq.type==="Chaudière fioul"?"Fioul":"Gaz",equip:eq,checks:{},observations:"",sigTech,sigClient,combustion:{},nonConformites:[]});
+    });
     if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
     onSave(newDocs);
   };
@@ -1033,17 +1154,33 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       </div>
 
       {step===1&&<>
-        {equips.length>1&&<div style={{marginBottom:16}}>
-          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--muted)",marginBottom:8,textTransform:"uppercase"}}>Équipement concerné</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{equips.map((e,i)=><button key={i} className={`btn btn-sm ${selectedEquipIdx===i?"btn-primary":"btn-secondary"}`} onClick={()=>setSelectedEquipIdx(i)}>{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||""}</button>)}</div>
+        {equips.length>0&&<div style={{marginBottom:16}}>
+          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--muted)",marginBottom:8,textTransform:"uppercase"}}>Équipement principal</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{equips.map((e,i)=><button key={i} className={`btn btn-sm ${selectedEquipIdx===i?"btn-primary":"btn-secondary"}`} onClick={()=>{setSelectedEquipIdx(i);setSelectedEquipIdxs([]);}}>{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}</button>)}</div>
         </div>}
         <div className="action-grid">
-          {[{id:"Entretien",icon:"🔧",title:"Bon d'intervention",desc:"Sans attestation"},...(!isSelClim?[{id:"Attestation Gaz",icon:"🔥",title:"Attestation Gaz",desc:"Chaudière gaz"},{id:"Attestation Fioul",icon:"🛢️",title:"Attestation Fioul",desc:"Chaudière fioul"}]:[]),...(isSelClim?[{id:"Attestation Clim",icon:"❄️",title:"Attestation Clim",desc:"Climatisation"}]:[]),{id:"Dépannage",icon:"⚠️",title:"Dépannage",desc:"Avec facturation"}].map(t=>(
+          {[{id:"Entretien",icon:"🔧",title:"Bon d'intervention",desc:"Sans attestation"},
+            ...(!isSelClim&&!isSelPac?[{id:"Attestation Gaz",icon:"🔥",title:"Attestation Gaz",desc:"Chaudière gaz"},{id:"Attestation Fioul",icon:"🛢️",title:"Attestation Fioul",desc:"Chaudière fioul"}]:[]),
+            ...(isSelClim?[{id:"Attestation Clim",icon:"❄️",title:"Attestation Clim",desc:"Climatisation"}]:[]),
+            ...(isSelPac?[{id:"Attestation PAC",icon:"♻️",title:"Attestation PAC",desc:"Pompe à chaleur"}]:[]),
+            {id:"Dépannage",icon:"⚠️",title:"Dépannage",desc:"Avec facturation"}
+          ].map(t=>(
             <div key={t.id} className="action-card" onClick={()=>{setTypeDoc(t.id);setStep(2);}}>
               <div className="ac-icon">{t.icon}</div><div className="ac-title">{t.title}</div><div className="ac-desc">{t.desc}</div>
             </div>
           ))}
         </div>
+        {equips.length>1&&<div style={{marginTop:16,background:"var(--surface2)",borderRadius:10,padding:14}}>
+          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>📋 Attestations supplémentaires (autres équipements)</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {equips.map((e,i)=>i===selectedEquipIdx?null:(
+              <button key={i} className={`btn btn-sm ${selectedEquipIdxs.includes(i)?"btn-primary":"btn-secondary"}`} onClick={()=>toggleEquipSel(i)}>
+                {selectedEquipIdxs.includes(i)?"✓ ":""}{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}
+              </button>
+            ))}
+          </div>
+          {selectedEquipIdxs.length>0&&<div style={{fontSize:"0.75rem",color:"var(--success)",marginTop:8}}>✓ {selectedEquipIdxs.length} attestation(s) supplémentaire(s) seront créées</div>}
+        </div>}
       </>}
 
       {step===2&&<>
