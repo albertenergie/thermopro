@@ -1089,7 +1089,9 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const [step,setStep]=useState(1);
   const [typeDoc,setTypeDoc]=useState(null);
   const [selectedEquipIdx,setSelectedEquipIdx]=useState(0);
-  const [selectedEquipIdxs,setSelectedEquipIdxs]=useState([]);
+  const [attEquipIdxs,setAttEquipIdxs]=useState([]); // équipements pour attestations supplémentaires
+  const [attStep,setAttStep]=useState(0); // 0=att principale, 1,2...=atts supplémentaires
+  const [attData,setAttData]=useState({}); // données par attestation {0:{checks,combustion,...}, 1:{...}}
   const [sigTech,setSigTech]=useState(null);
   const [sigClient,setSigClient]=useState(null);
   const numAuto=`${new Date().getFullYear()}-${String(Math.floor(Math.random()*9000)+1000)}`;
@@ -1097,13 +1099,34 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const selEquip=equips[selectedEquipIdx]||{};
   const isSelClim=selEquip.type==="Climatisation";
   const isSelPac=selEquip.type==="Pompe à chaleur";
+
+  // Équipement courant pour l'attestation en cours
+  const curAttEquipIdx=attStep===0?selectedEquipIdx:attEquipIdxs[attStep-1];
+  const curEquip=equips[curAttEquipIdx]||{};
+  const curAttType=attStep===0?typeDoc:getAttTypeFromEquip(curEquip);
+
+  function getAttTypeFromEquip(eq){
+    if(eq.type==="Climatisation") return "Attestation Clim";
+    if(eq.type==="Pompe à chaleur") return "Attestation PAC";
+    if(eq.type==="Chaudière fioul") return "Attestation Fioul";
+    return "Attestation Gaz";
+  }
+
   const [f,setF]=useState({clientId:client.id,numero:numAuto,date:rdv.date,tva:10,statut:"Émise",lignes:[],observations:"",piecesChangees:"",heureArrivee:"",heureDepart:"",typeIntervention:rdv.type,combustible:selEquip.type==="Chaudière fioul"?"Fioul":"Gaz",checks:{}});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
-  const setCheck=(i,v)=>setF(p=>({...p,checks:{...p.checks,[i]:p.checks[i]===v?undefined:v}}));
-  const checkList=typeDoc==="Attestation Clim"?CHECKS_CLIM:typeDoc==="Attestation PAC"?CHECKS_PAC:f.combustible==="Fioul"?CHECKS_FIOUL:CHECKS_GAZ;
+
+  // Données de l'attestation courante
+  const curAtt=attData[attStep]||{checks:{},combustible:curEquip.type==="Chaudière fioul"?"Fioul":"Gaz",observations:""};
+  const setCurAtt=(k,v)=>setAttData(p=>({...p,[attStep]:{...curAtt,[k]:v}}));
+  const setCurCheck=(i,v)=>setAttData(p=>({...p,[attStep]:{...curAtt,checks:{...curAtt.checks,[i]:curAtt.checks[i]===v?undefined:v}}}));
+
   const isAtt=typeDoc?.startsWith("Attestation");
-  const isClim=typeDoc==="Attestation Clim";
-  const isPac=typeDoc==="Attestation PAC";
+  const isClim=curAttType==="Attestation Clim";
+  const isPac=curAttType==="Attestation PAC";
+  const isFioul=curAtt.combustible==="Fioul";
+  const checkList=isClim?CHECKS_CLIM:isPac?CHECKS_PAC:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
+  const totalAtts=isAtt?1+attEquipIdxs.length:0;
+
   const [docTab,setDocTab]=useState("facture");
   const [docLignes,setDocLignes]=useState([]);
   const [docObjet,setDocObjet]=useState("");
@@ -1115,33 +1138,48 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const addFromCatWizard=item=>setDocLignes(p=>[...p,{designation:item.designation,qte:1,pu:item.pu,tva:item.tva,unite:item.unite}]);
   const setDocLine=(i,k,v)=>setDocLignes(p=>{const l=[...p];l[i]={...l[i],[k]:v};return l;});
   const delDocLine=i=>setDocLignes(p=>p.filter((_,j)=>j!==i));
+  const toggleAttEquip=i=>setAttEquipIdxs(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i]);
 
-  const toggleEquipSel=i=>setSelectedEquipIdxs(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i]);
-
-  const getAttType=eq=>{
-    if(eq.type==="Climatisation") return "Attestation Clim";
-    if(eq.type==="Pompe à chaleur") return "Attestation PAC";
-    if(eq.type==="Chaudière fioul") return "Attestation Fioul";
-    return "Attestation Gaz";
-  };
+  // Navigation entre attestations
+  const hasMoreAtts=attStep<attEquipIdxs.length;
+  const goNextAtt=()=>{if(hasMoreAtts){setAttStep(s=>s+1);}else{setStep(3);}};
+  const goPrevAtt=()=>{if(attStep>0){setAttStep(s=>s-1);}else{setStep(2);}};
 
   const handleSave=()=>{
     const newDocs=[];
-    newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:selEquip,sigTech,sigClient});
-    if(isAtt) newDocs.push({type:typeDoc,numero:`ATT-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:f.combustible,equip:selEquip,checks:f.checks,observations:f.observations,sigTech,sigClient,combustion:{coAmbiant:f.coAmbiant,coFumees:f.coFumees,co2:f.co2,o2:f.o2,tempFumees:f.tempFumees,tempAir:f.tempAir,rendement:f.rendement,nox:f.nox,gicleur:f.gicleur,pressionPompe:f.pressionPompe,tempSoufflage:f.tempSoufflage,tempReprise:f.tempReprise,tempDepart:f.tempDepart,tempRetour:f.tempRetour,pression:f.pression},nonConformites:f.nonConformites||[]});
-    // Attestations supplémentaires pour les équipements cochés
-    selectedEquipIdxs.forEach((idx,i)=>{
-      const eq=equips[idx];
-      const attType=getAttType(eq);
-      newDocs.push({type:attType,numero:`ATT-${f.numero}-${i+2}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:eq.type==="Chaudière fioul"?"Fioul":"Gaz",equip:eq,checks:{},observations:"",sigTech,sigClient,combustion:{},nonConformites:[]});
-    });
+    // Bon d'intervention
+    newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:equips[selectedEquipIdx]||{},sigTech,sigClient});
+    // Attestation principale + supplémentaires
+    if(isAtt){
+      for(let i=0;i<=attEquipIdxs.length;i++){
+        const eqIdx=i===0?selectedEquipIdx:attEquipIdxs[i-1];
+        const eq=equips[eqIdx]||{};
+        const att=attData[i]||{};
+        const attType=i===0?typeDoc:getAttTypeFromEquip(eq);
+        const suffix=i===0?"":`-${i+1}`;
+        newDocs.push({
+          type:attType,
+          numero:`ATT-${f.numero}${suffix}`,
+          date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",
+          combustible:att.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),
+          equip:eq,checks:att.checks||{},
+          observations:att.observations||"",
+          sigTech,sigClient,
+          combustion:{coAmbiant:att.coAmbiant,coFumees:att.coFumees,co2:att.co2,o2:att.o2,tempFumees:att.tempFumees,tempAir:att.tempAir,rendement:att.rendement,nox:att.nox,gicleur:att.gicleur,pressionPompe:att.pressionPompe,tempSoufflage:att.tempSoufflage,tempReprise:att.tempReprise,tempDepart:att.tempDepart,tempRetour:att.tempRetour,pression:att.pression},
+          nonConformites:att.nonConformites||[]
+        });
+      }
+    }
     if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
     onSave(newDocs);
   };
+
   return (
     <div className="modal-overlay"><div className="modal modal-xl" style={{maxWidth:820}}>
       <div className="no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div className="modal-title" style={{marginBottom:0}}>{step===1?"Démarrer":step===2?"Saisie":step===3?"Devis / Facture":"Signatures"}</div>
+        <div className="modal-title" style={{marginBottom:0}}>
+          {step===1?"Démarrer":step===2?`Attestation ${totalAtts>1?`${attStep+1}/${totalAtts} — `:""}${curEquip.marque||curEquip.marqueClim||curEquip.marquePac||""} ${curEquip.modele||curEquip.modelePac||""}`:step===3?"Devis / Facture":"Signatures"}
+        </div>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
       </div>
       <div className="inter-header">
@@ -1156,7 +1194,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       {step===1&&<>
         {equips.length>0&&<div style={{marginBottom:16}}>
           <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--muted)",marginBottom:8,textTransform:"uppercase"}}>Équipement principal</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{equips.map((e,i)=><button key={i} className={`btn btn-sm ${selectedEquipIdx===i?"btn-primary":"btn-secondary"}`} onClick={()=>{setSelectedEquipIdx(i);setSelectedEquipIdxs([]);}}>{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}</button>)}</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{equips.map((e,i)=><button key={i} className={`btn btn-sm ${selectedEquipIdx===i?"btn-primary":"btn-secondary"}`} onClick={()=>{setSelectedEquipIdx(i);setAttEquipIdxs([]);}}>{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}</button>)}</div>
         </div>}
         <div className="action-grid">
           {[{id:"Entretien",icon:"🔧",title:"Bon d'intervention",desc:"Sans attestation"},
@@ -1165,30 +1203,40 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
             ...(isSelPac?[{id:"Attestation PAC",icon:"♻️",title:"Attestation PAC",desc:"Pompe à chaleur"}]:[]),
             {id:"Dépannage",icon:"⚠️",title:"Dépannage",desc:"Avec facturation"}
           ].map(t=>(
-            <div key={t.id} className="action-card" onClick={()=>{setTypeDoc(t.id);setStep(2);}}>
+            <div key={t.id} className="action-card" onClick={()=>{setTypeDoc(t.id);setStep(2);setAttStep(0);}}>
               <div className="ac-icon">{t.icon}</div><div className="ac-title">{t.title}</div><div className="ac-desc">{t.desc}</div>
             </div>
           ))}
         </div>
         {equips.length>1&&<div style={{marginTop:16,background:"var(--surface2)",borderRadius:10,padding:14}}>
-          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>📋 Attestations supplémentaires (autres équipements)</div>
+          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>📋 Attestations supplémentaires</div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {equips.map((e,i)=>i===selectedEquipIdx?null:(
-              <button key={i} className={`btn btn-sm ${selectedEquipIdxs.includes(i)?"btn-primary":"btn-secondary"}`} onClick={()=>toggleEquipSel(i)}>
-                {selectedEquipIdxs.includes(i)?"✓ ":""}{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}
+              <button key={i} className={`btn btn-sm ${attEquipIdxs.includes(i)?"btn-primary":"btn-secondary"}`} onClick={()=>toggleAttEquip(i)}>
+                {attEquipIdxs.includes(i)?"✓ ":""}{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}
               </button>
             ))}
           </div>
-          {selectedEquipIdxs.length>0&&<div style={{fontSize:"0.75rem",color:"var(--success)",marginTop:8}}>✓ {selectedEquipIdxs.length} attestation(s) supplémentaire(s) seront créées</div>}
+          {attEquipIdxs.length>0&&<div style={{fontSize:"0.75rem",color:"var(--success)",marginTop:8}}>✓ {attEquipIdxs.length+1} attestations à remplir au total</div>}
         </div>}
       </>}
 
       {step===2&&<>
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setStep(1)}>← Retour</button>
-          <span className="badge badge-accent">{typeDoc}</span>
+        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>attStep===0?setStep(1):setAttStep(s=>s-1)}>← Retour</button>
+          <span className="badge badge-accent">{curAttType}</span>
+          {totalAtts>1&&<span style={{fontSize:"0.8rem",color:"var(--muted)",marginLeft:"auto"}}>Attestation {attStep+1} sur {totalAtts}</span>}
         </div>
-        <div className="wizard-step">
+
+        {/* Infos équipement courant */}
+        <div style={{background:"var(--surface2)",borderRadius:8,padding:10,marginBottom:14,fontSize:"0.8rem"}}>
+          <span style={{fontWeight:600,color:"var(--accent)"}}>{EQUIP_ICON(curEquip.type)} {curEquip.type}</span>
+          {(curEquip.marque||curEquip.marqueClim||curEquip.marquePac)&&<span style={{marginLeft:8}}>{curEquip.marque||curEquip.marqueClim||curEquip.marquePac} {curEquip.modele||curEquip.modelePac||""}</span>}
+          {(curEquip.numSerie||curEquip.numSerieClim||curEquip.numSeriePac)&&<span style={{marginLeft:8,color:"var(--muted)"}}>N° {curEquip.numSerie||curEquip.numSerieClim||curEquip.numSeriePac}</span>}
+        </div>
+
+        {/* Infos générales seulement sur la première attestation */}
+        {attStep===0&&<div className="wizard-step">
           <div className="wizard-step-title"><div className="wizard-step-num">1</div>Infos générales</div>
           <div className="form-grid">
             <div className="form-group"><label>N° document</label><input value={f.numero} onChange={e=>s("numero",e.target.value)}/></div>
@@ -1196,47 +1244,71 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
             <div className="form-group"><label>Heure arrivée</label><input type="time" value={f.heureArrivee} onChange={e=>s("heureArrivee",e.target.value)}/></div>
             <div className="form-group"><label>Heure départ</label><input type="time" value={f.heureDepart} onChange={e=>s("heureDepart",e.target.value)}/></div>
           </div>
-        </div>
-        {isAtt&&!isClim&&<div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">2</div>Combustible</div>
-          <div className="form-grid"><div className="form-group"><label>Combustible</label><select value={f.combustible} onChange={e=>s("combustible",e.target.value)}><option>Gaz</option><option>Fioul</option></select></div></div>
         </div>}
-        {isAtt&&<div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isClim?"2":"3"}</div>Mesures combustion</div>
+
+        {!isClim&&!isPac&&<div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{attStep===0?"2":"1"}</div>Combustible</div>
+          <div className="form-grid"><div className="form-group"><label>Combustible</label><select value={curAtt.combustible||"Gaz"} onChange={e=>setCurAtt("combustible",e.target.value)}><option>Gaz</option><option>Fioul</option></select></div></div>
+        </div>}
+
+        <div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"2":"1"):(attStep===0?"3":"2")}</div>Mesures{isClim?" températures":isPac?" températures":" combustion"}</div>
           <div className="form-grid">
-            <div className="form-group"><label>CO ambiant (ppm)</label><input type="number" value={f.coAmbiant||""} onChange={e=>s("coAmbiant",e.target.value)}/></div>
-            <div className="form-group"><label>CO fumées (ppm)</label><input type="number" value={f.coFumees||""} onChange={e=>s("coFumees",e.target.value)}/></div>
-            <div className="form-group"><label>CO₂ (%)</label><input type="number" step="0.1" value={f.co2||""} onChange={e=>s("co2",e.target.value)}/></div>
-            <div className="form-group"><label>O₂ (%)</label><input type="number" step="0.1" value={f.o2||""} onChange={e=>s("o2",e.target.value)}/></div>
-            <div className="form-group"><label>Temp. fumées (°C)</label><input type="number" value={f.tempFumees||""} onChange={e=>s("tempFumees",e.target.value)}/></div>
-            <div className="form-group"><label>Rendement (%)</label><input type="number" step="0.1" value={f.rendement||""} onChange={e=>s("rendement",e.target.value)}/></div>
+            {!isClim&&!isPac&&<>
+              <div className="form-group"><label>CO ambiant (ppm)</label><input type="number" value={curAtt.coAmbiant||""} onChange={e=>setCurAtt("coAmbiant",e.target.value)}/></div>
+              <div className="form-group"><label>CO fumées (ppm)</label><input type="number" value={curAtt.coFumees||""} onChange={e=>setCurAtt("coFumees",e.target.value)}/></div>
+              <div className="form-group"><label>CO₂ (%)</label><input type="number" step="0.1" value={curAtt.co2||""} onChange={e=>setCurAtt("co2",e.target.value)}/></div>
+              <div className="form-group"><label>O₂ (%)</label><input type="number" step="0.1" value={curAtt.o2||""} onChange={e=>setCurAtt("o2",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. fumées (°C)</label><input type="number" value={curAtt.tempFumees||""} onChange={e=>setCurAtt("tempFumees",e.target.value)}/></div>
+              <div className="form-group"><label>Rendement (%)</label><input type="number" step="0.1" value={curAtt.rendement||""} onChange={e=>setCurAtt("rendement",e.target.value)}/></div>
+              <div className="form-group"><label>NOx (mg/kWh)</label><input type="number" value={curAtt.nox||""} onChange={e=>setCurAtt("nox",e.target.value)}/></div>
+              <div className="form-group"><label>Air comburant (°C)</label><input type="number" value={curAtt.tempAir||""} onChange={e=>setCurAtt("tempAir",e.target.value)}/></div>
+              {isFioul&&<><div className="form-group"><label>Gicleur</label><input value={curAtt.gicleur||""} onChange={e=>setCurAtt("gicleur",e.target.value)}/></div>
+              <div className="form-group"><label>Pression pompe (bar)</label><input type="number" step="0.1" value={curAtt.pressionPompe||""} onChange={e=>setCurAtt("pressionPompe",e.target.value)}/></div></>}
+            </>}
+            {isClim&&<>
+              <div className="form-group"><label>Temp. soufflage (°C)</label><input type="number" step="0.1" value={curAtt.tempSoufflage||""} onChange={e=>setCurAtt("tempSoufflage",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. reprise (°C)</label><input type="number" step="0.1" value={curAtt.tempReprise||""} onChange={e=>setCurAtt("tempReprise",e.target.value)}/></div>
+            </>}
+            {isPac&&<>
+              <div className="form-group"><label>Temp. départ (°C)</label><input type="number" step="0.1" value={curAtt.tempDepart||""} onChange={e=>setCurAtt("tempDepart",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. retour (°C)</label><input type="number" step="0.1" value={curAtt.tempRetour||""} onChange={e=>setCurAtt("tempRetour",e.target.value)}/></div>
+              <div className="form-group"><label>Pression circuit (bar)</label><input type="number" step="0.1" value={curAtt.pression||""} onChange={e=>setCurAtt("pression",e.target.value)}/></div>
+            </>}
           </div>
-        </div>}
-        {isAtt&&<div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isClim?"3":"4"}</div>Points de vérification</div>
+        </div>
+
+        <div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"3":"2"):(attStep===0?"4":"3")}</div>Points de vérification</div>
           <div className="checks-grid">
             {checkList.map((c,i)=>(
-              <div key={i} className="check-item" style={{background:f.checks[i]==="nok"?"#ef444410":""}}>
+              <div key={i} className="check-item" style={{background:curAtt.checks[i]==="nok"?"#ef444410":""}}>
                 <span className="check-label">{c}</span>
                 <div className="check-btns">
-                  <div className={`check-btn${f.checks[i]==="ok"?" ok":""}`} onClick={()=>setCheck(i,"ok")}>✓</div>
-                  <div className={`check-btn${f.checks[i]==="nok"?" nok":""}`} onClick={()=>setCheck(i,"nok")}>✗</div>
-                  <div className={`check-btn${f.checks[i]==="na"?" na":""}`} onClick={()=>setCheck(i,"na")}>—</div>
+                  <div className={`check-btn${curAtt.checks[i]==="ok"?" ok":""}`} onClick={()=>setCurCheck(i,"ok")}>✓</div>
+                  <div className={`check-btn${curAtt.checks[i]==="nok"?" nok":""}`} onClick={()=>setCurCheck(i,"nok")}>✗</div>
+                  <div className={`check-btn${curAtt.checks[i]==="na"?" na":""}`} onClick={()=>setCurCheck(i,"na")}>—</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>}
+        </div>
+
         <div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isAtt?(isClim?"4":"5"):"2"}</div>Travaux & Observations</div>
+          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"4":"3"):(attStep===0?"5":"4")}</div>Travaux & Observations</div>
           <div className="form-grid">
-            <div className="form-group full"><label>Travaux réalisés</label><textarea value={f.observations} onChange={e=>s("observations",e.target.value)}/></div>
-            <div className="form-group full"><label>Pièces changées</label><textarea value={f.piecesChangees} onChange={e=>s("piecesChangees",e.target.value)} style={{minHeight:48}}/></div>
+            <div className="form-group full"><label>Travaux réalisés</label><textarea value={curAtt.observations||""} onChange={e=>setCurAtt("observations",e.target.value)}/></div>
+            {attStep===0&&<div className="form-group full"><label>Pièces changées</label><textarea value={f.piecesChangees} onChange={e=>s("piecesChangees",e.target.value)} style={{minHeight:48}}/></div>}
           </div>
         </div>
+
         <div className="form-actions">
           <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-primary btn-lg" onClick={()=>setStep(3)}>Devis / Facture →</button>
+          <button className="btn btn-primary btn-lg" onClick={()=>{
+            if(hasMoreAtts){setAttStep(s=>s+1);}else{setStep(3);}
+          }}>
+            {hasMoreAtts?`Attestation suivante (${attStep+2}/${totalAtts}) →`:"Devis / Facture →"}
+          </button>
         </div>
       </>}
 
