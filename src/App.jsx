@@ -1452,7 +1452,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue}) {
         {selRdvs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
         {selRdvs.map(r=>{
           const c=clients.find(x=>x.id===r.clientId);
-          const rdvDocs=docs.filter(d=>d.rdvId===r.id||(d.clientId===r.clientId&&!d.rdvId&&d.date===r.date));
+          const rdvDocs=docs.filter(d=>d.rdvId===r.id);
           return(<div key={r.id} className="rdv-row">
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
