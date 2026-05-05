@@ -1086,47 +1086,16 @@ function ModalRdv({rdv, clients, onSave, onClose}) {
 }
 
 function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
+  const equips=client.equipements||[];
+  const numAuto=`${new Date().getFullYear()}-${String(Math.floor(Math.random()*9000)+1000)}`;
+  const [selections,setSelections]=useState([]);
+  const [curSelIdx,setCurSelIdx]=useState(0);
   const [step,setStep]=useState(1);
-  const [typeDoc,setTypeDoc]=useState(null);
-  const [selectedEquipIdx,setSelectedEquipIdx]=useState(0);
-  const [attEquipIdxs,setAttEquipIdxs]=useState([]); // équipements pour attestations supplémentaires
-  const [attStep,setAttStep]=useState(0); // 0=att principale, 1,2...=atts supplémentaires
-  const [attData,setAttData]=useState({}); // données par attestation {0:{checks,combustion,...}, 1:{...}}
+  const [selData,setSelData]=useState({});
   const [sigTech,setSigTech]=useState(null);
   const [sigClient,setSigClient]=useState(null);
-  const numAuto=`${new Date().getFullYear()}-${String(Math.floor(Math.random()*9000)+1000)}`;
-  const equips=client.equipements||[];
-  const selEquip=equips[selectedEquipIdx]||{};
-  const isSelClim=selEquip.type==="Climatisation";
-  const isSelPac=selEquip.type==="Pompe à chaleur";
-
-  // Équipement courant pour l'attestation en cours
-  const curAttEquipIdx=attStep===0?selectedEquipIdx:attEquipIdxs[attStep-1];
-  const curEquip=equips[curAttEquipIdx]||{};
-  const curAttType=attStep===0?typeDoc:getAttTypeFromEquip(curEquip);
-
-  function getAttTypeFromEquip(eq){
-    if(eq.type==="Climatisation") return "Attestation Clim";
-    if(eq.type==="Pompe à chaleur") return "Attestation PAC";
-    if(eq.type==="Chaudière fioul") return "Attestation Fioul";
-    return "Attestation Gaz";
-  }
-
-  const [f,setF]=useState({clientId:client.id,numero:numAuto,date:rdv.date,tva:10,statut:"Émise",lignes:[],observations:"",piecesChangees:"",heureArrivee:"",heureDepart:"",typeIntervention:rdv.type,combustible:selEquip.type==="Chaudière fioul"?"Fioul":"Gaz",checks:{}});
-  const s=(k,v)=>setF(p=>({...p,[k]:v}));
-
-  // Données de l'attestation courante
-  const curAtt=attData[attStep]||{checks:{},combustible:curEquip.type==="Chaudière fioul"?"Fioul":"Gaz",observations:""};
-  const setCurAtt=(k,v)=>setAttData(p=>({...p,[attStep]:{...curAtt,[k]:v}}));
-  const setCurCheck=(i,v)=>setAttData(p=>({...p,[attStep]:{...curAtt,checks:{...curAtt.checks,[i]:curAtt.checks[i]===v?undefined:v}}}));
-
-  const isAtt=typeDoc?.startsWith("Attestation");
-  const isClim=curAttType==="Attestation Clim";
-  const isPac=curAttType==="Attestation PAC";
-  const isFioul=curAtt.combustible==="Fioul";
-  const checkList=isClim?CHECKS_CLIM:isPac?CHECKS_PAC:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
-  const totalAtts=isAtt?1+attEquipIdxs.length:0;
-
+  const [f,setF]=useState({numero:numAuto,date:rdv.date,heureArrivee:"",heureDepart:"",piecesChangees:""});
+  const sv=(k,v)=>setF(p=>({...p,[k]:v}));
   const [docTab,setDocTab]=useState("facture");
   const [docLignes,setDocLignes]=useState([]);
   const [docObjet,setDocObjet]=useState("");
@@ -1138,39 +1107,58 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const addFromCatWizard=item=>setDocLignes(p=>[...p,{designation:item.designation,qte:1,pu:item.pu,tva:item.tva,unite:item.unite}]);
   const setDocLine=(i,k,v)=>setDocLignes(p=>{const l=[...p];l[i]={...l[i],[k]:v};return l;});
   const delDocLine=i=>setDocLignes(p=>p.filter((_,j)=>j!==i));
-  const toggleAttEquip=i=>setAttEquipIdxs(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i]);
 
-  // Navigation entre attestations
-  const hasMoreAtts=attStep<attEquipIdxs.length;
-  const goNextAtt=()=>{if(hasMoreAtts){setAttStep(s=>s+1);}else{setStep(3);}};
-  const goPrevAtt=()=>{if(attStep>0){setAttStep(s=>s-1);}else{setStep(2);}};
+  function getAttType(eq){
+    if(!eq) return "Attestation Gaz";
+    if(eq.type==="Climatisation") return "Attestation Clim";
+    if(eq.type==="Pompe à chaleur") return "Attestation PAC";
+    if(eq.type==="Chaudière fioul") return "Attestation Fioul";
+    return "Attestation Gaz";
+  }
+
+  const toggleSel=(equipIdx,action)=>{
+    setSelections(p=>{
+      const exists=p.find(s=>s.equipIdx===equipIdx&&s.action===action);
+      if(exists) return p.filter(s=>!(s.equipIdx===equipIdx&&s.action===action));
+      return [...p,{equipIdx,action}];
+    });
+  };
+  const isSelected=(equipIdx,action)=>selections.some(s=>s.equipIdx===equipIdx&&s.action===action);
+
+  const curSel=selections[curSelIdx];
+  const curEquip=curSel?equips[curSel.equipIdx]||{}:{};
+  const curAttType=curSel?getAttType(curEquip):"";
+  const curData=selData[curSelIdx]||{checks:{},combustible:curEquip.type==="Chaudière fioul"?"Fioul":"Gaz",observations:""};
+  const setCurData=(k,v)=>setSelData(p=>({...p,[curSelIdx]:{...curData,[k]:v}}));
+  const setCurCheck=(i,v)=>setSelData(p=>({...p,[curSelIdx]:{...curData,checks:{...curData.checks,[i]:curData.checks[i]===v?undefined:v}}}));
+  const isClim=curAttType==="Attestation Clim";
+  const isPac=curAttType==="Attestation PAC";
+  const isFioul=curData.combustible==="Fioul";
+  const checkList=isClim?CHECKS_CLIM:isPac?CHECKS_PAC:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
+  const isAttSel=curSel?.action==="attestation";
+  const hasFacturation=selections.some(s=>s.action==="depannage"||s.action==="remplacement");
+
+  const getEquipActions=(eq)=>{
+    const base=[{action:"depannage",icon:"⚠️",label:"Dépannage"},{action:"remplacement",icon:"🔩",label:"Remplacement de pièces"}];
+    if(eq.type==="Chaudière gaz") return [{action:"attestation",icon:"📋",label:"Entretien + Attestation Gaz"},...base];
+    if(eq.type==="Chaudière fioul") return [{action:"attestation",icon:"📋",label:"Entretien + Attestation Fioul"},...base];
+    if(eq.type==="Climatisation") return [{action:"attestation",icon:"📋",label:"Entretien + Attestation Clim"},...base];
+    if(eq.type==="Pompe à chaleur") return [{action:"attestation",icon:"📋",label:"Entretien + Attestation PAC"},...base];
+    return [{action:"attestation",icon:"📋",label:"Entretien + Attestation"},...base];
+  };
 
   const handleSave=()=>{
     const newDocs=[];
-    // Bon d'intervention
-    newDocs.push({type:typeDoc==="Dépannage"?"Dépannage":"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:f.tva,statut:"Émise",lignes:f.lignes,observations:f.observations,piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:equips[selectedEquipIdx]||{},sigTech,sigClient});
-    // Attestation principale + supplémentaires
-    if(isAtt){
-      for(let i=0;i<=attEquipIdxs.length;i++){
-        const eqIdx=i===0?selectedEquipIdx:attEquipIdxs[i-1];
-        const eq=equips[eqIdx]||{};
-        const att=attData[i]||{};
-        const attType=i===0?typeDoc:getAttTypeFromEquip(eq);
-        const suffix=i===0?"":`-${i+1}`;
-        newDocs.push({
-          type:attType,
-          numero:`ATT-${f.numero}${suffix}`,
-          date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",
-          combustible:att.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),
-          equip:eq,checks:att.checks||{},
-          observations:att.observations||"",
-          sigTech,sigClient,
-          combustion:{coAmbiant:att.coAmbiant,coFumees:att.coFumees,co2:att.co2,o2:att.o2,tempFumees:att.tempFumees,tempAir:att.tempAir,rendement:att.rendement,nox:att.nox,gicleur:att.gicleur,pressionPompe:att.pressionPompe,tempSoufflage:att.tempSoufflage,tempReprise:att.tempReprise,tempDepart:att.tempDepart,tempRetour:att.tempRetour,pression:att.pression},
-          nonConformites:att.nonConformites||[]
-        });
+    newDocs.push({type:"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:selData[0]?.observations||"",piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:equips[0]||{},sigTech,sigClient});
+    selections.forEach((sel,i)=>{
+      const eq=equips[sel.equipIdx]||{};
+      const d=selData[i]||{};
+      if(sel.action==="attestation"){
+        const attType=getAttType(eq);
+        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
       }
-    }
-    if(docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||f.typeIntervention,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
+    });
+    if(hasFacturation&&docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||rdv.type,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
     onSave(newDocs);
   };
 
@@ -1178,7 +1166,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
     <div className="modal-overlay"><div className="modal modal-xl" style={{maxWidth:820}}>
       <div className="no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div className="modal-title" style={{marginBottom:0}}>
-          {step===1?"Démarrer":step===2?`Attestation ${totalAtts>1?`${attStep+1}/${totalAtts} — `:""}${curEquip.marque||curEquip.marqueClim||curEquip.marquePac||""} ${curEquip.modele||curEquip.modelePac||""}`:step===3?"Devis / Facture":"Signatures"}
+          {step===1?"Démarrer":step===2?`${curSelIdx+1}/${selections.length} — ${curEquip.marque||curEquip.marqueClim||curEquip.marquePac||curEquip.type||""}`:step===3?"Devis / Facture":"Signatures"}
         </div>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
       </div>
@@ -1192,122 +1180,120 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       </div>
 
       {step===1&&<>
-        {equips.length>0&&<div style={{marginBottom:16}}>
-          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--muted)",marginBottom:8,textTransform:"uppercase"}}>Équipement principal</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{equips.map((e,i)=><button key={i} className={`btn btn-sm ${selectedEquipIdx===i?"btn-primary":"btn-secondary"}`} onClick={()=>{setSelectedEquipIdx(i);setAttEquipIdxs([]);}}>{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}</button>)}</div>
-        </div>}
-        <div className="action-grid">
-          {[{id:"Entretien",icon:"🔧",title:"Bon d'intervention",desc:"Sans attestation"},
-            ...(!isSelClim&&!isSelPac?[{id:"Attestation Gaz",icon:"🔥",title:"Attestation Gaz",desc:"Chaudière gaz"},{id:"Attestation Fioul",icon:"🛢️",title:"Attestation Fioul",desc:"Chaudière fioul"}]:[]),
-            ...(isSelClim?[{id:"Attestation Clim",icon:"❄️",title:"Attestation Clim",desc:"Climatisation"}]:[]),
-            ...(isSelPac?[{id:"Attestation PAC",icon:"♻️",title:"Attestation PAC",desc:"Pompe à chaleur"}]:[]),
-            {id:"Dépannage",icon:"⚠️",title:"Dépannage",desc:"Avec facturation"}
-          ].map(t=>(
-            <div key={t.id} className="action-card" onClick={()=>{setTypeDoc(t.id);setStep(2);setAttStep(0);}}>
-              <div className="ac-icon">{t.icon}</div><div className="ac-title">{t.title}</div><div className="ac-desc">{t.desc}</div>
+        <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--muted)",marginBottom:12,textTransform:"uppercase"}}>Que voulez-vous faire ?</div>
+        {equips.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem",padding:"12px 0"}}>Aucun équipement enregistré pour ce client.</div>}
+        {equips.map((eq,i)=>(
+          <div key={i} style={{marginBottom:18}}>
+            <div style={{fontSize:"0.82rem",fontWeight:600,color:"var(--accent)",marginBottom:8}}>
+              {EQUIP_ICON(eq.type)} {eq.type} {eq.marque||eq.marqueClim||eq.marquePac||""} {eq.modele||eq.modelePac||""}
             </div>
-          ))}
-        </div>
-        {equips.length>1&&<div style={{marginTop:16,background:"var(--surface2)",borderRadius:10,padding:14}}>
-          <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)",marginBottom:10}}>📋 Attestations supplémentaires</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {equips.map((e,i)=>i===selectedEquipIdx?null:(
-              <button key={i} className={`btn btn-sm ${attEquipIdxs.includes(i)?"btn-primary":"btn-secondary"}`} onClick={()=>toggleAttEquip(i)}>
-                {attEquipIdxs.includes(i)?"✓ ":""}{EQUIP_ICON(e.type)} {e.type} {e.marque||e.marqueClim||e.marquePac||""}
-              </button>
-            ))}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {getEquipActions(eq).map(a=>(
+                <div key={a.action} onClick={()=>toggleSel(i,a.action)}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:isSelected(i,a.action)?"var(--accent)15":"var(--surface2)",border:`1.5px solid ${isSelected(i,a.action)?"var(--accent)":"var(--border)"}`,borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all .2s"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:"1.1rem"}}>{a.icon}</span>
+                    <span style={{fontSize:"0.88rem",fontWeight:500,color:isSelected(i,a.action)?"var(--accent)":"var(--text)"}}>{a.label}</span>
+                  </div>
+                  <div style={{width:20,height:20,borderRadius:"50%",border:`1.5px solid ${isSelected(i,a.action)?"var(--accent)":"var(--border)"}`,background:isSelected(i,a.action)?"var(--accent)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",color:"#fff",flexShrink:0}}>
+                    {isSelected(i,a.action)?"✓":""}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          {attEquipIdxs.length>0&&<div style={{fontSize:"0.75rem",color:"var(--success)",marginTop:8}}>✓ {attEquipIdxs.length+1} attestations à remplir au total</div>}
+        ))}
+        {selections.length>0&&<div style={{background:"var(--accent)15",border:"1px solid var(--accent)",borderRadius:10,padding:"10px 14px",fontSize:"0.82rem",color:"var(--accent)",fontWeight:600,marginBottom:16}}>
+          ✓ {selections.length} action(s) sélectionnée(s)
         </div>}
+        <div className="form-grid" style={{marginBottom:16}}>
+          <div className="form-group"><label>Heure arrivée</label><input type="time" value={f.heureArrivee} onChange={e=>sv("heureArrivee",e.target.value)}/></div>
+          <div className="form-group"><label>Heure départ</label><input type="time" value={f.heureDepart} onChange={e=>sv("heureDepart",e.target.value)}/></div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn btn-primary btn-lg" disabled={selections.length===0} onClick={()=>{setCurSelIdx(0);setStep(2);}}>▶ Démarrer ({selections.length})</button>
+        </div>
       </>}
 
       {step===2&&<>
-        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>attStep===0?setStep(1):setAttStep(s=>s-1)}>← Retour</button>
-          <span className="badge badge-accent">{curAttType}</span>
-          {totalAtts>1&&<span style={{fontSize:"0.8rem",color:"var(--muted)",marginLeft:"auto"}}>Attestation {attStep+1} sur {totalAtts}</span>}
+        <div style={{display:"flex",gap:4,marginBottom:16}}>
+          {selections.map((_,i)=>(
+            <div key={i} style={{flex:1,height:4,borderRadius:2,background:i<curSelIdx?"var(--accent)":i===curSelIdx?"var(--accent)80":"var(--border)",transition:"all .3s"}}/>
+          ))}
         </div>
-
-        {/* Infos équipement courant */}
-        <div style={{background:"var(--surface2)",borderRadius:8,padding:10,marginBottom:14,fontSize:"0.8rem"}}>
-          <span style={{fontWeight:600,color:"var(--accent)"}}>{EQUIP_ICON(curEquip.type)} {curEquip.type}</span>
-          {(curEquip.marque||curEquip.marqueClim||curEquip.marquePac)&&<span style={{marginLeft:8}}>{curEquip.marque||curEquip.marqueClim||curEquip.marquePac} {curEquip.modele||curEquip.modelePac||""}</span>}
-          {(curEquip.numSerie||curEquip.numSerieClim||curEquip.numSeriePac)&&<span style={{marginLeft:8,color:"var(--muted)"}}>N° {curEquip.numSerie||curEquip.numSerieClim||curEquip.numSeriePac}</span>}
+        <div style={{background:"var(--surface2)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:"0.82rem",display:"flex",alignItems:"center",gap:8}}>
+          <span>{curSel?.action==="attestation"?"📋":curSel?.action==="depannage"?"⚠️":"🔩"}</span>
+          <div>
+            <div style={{fontWeight:600,color:"var(--accent)"}}>{curSel?.action==="attestation"?curAttType:curSel?.action==="depannage"?"Dépannage":"Remplacement de pièces"}</div>
+            <div style={{fontSize:"0.75rem",color:"var(--muted)"}}>{EQUIP_ICON(curEquip.type)} {curEquip.type} {curEquip.marque||curEquip.marqueClim||curEquip.marquePac||""}</div>
+          </div>
         </div>
-
-        {/* Infos générales seulement sur la première attestation */}
-        {attStep===0&&<div className="wizard-step">
+        {curSelIdx===0&&<div className="wizard-step">
           <div className="wizard-step-title"><div className="wizard-step-num">1</div>Infos générales</div>
           <div className="form-grid">
-            <div className="form-group"><label>N° document</label><input value={f.numero} onChange={e=>s("numero",e.target.value)}/></div>
-            <div className="form-group"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
-            <div className="form-group"><label>Heure arrivée</label><input type="time" value={f.heureArrivee} onChange={e=>s("heureArrivee",e.target.value)}/></div>
-            <div className="form-group"><label>Heure départ</label><input type="time" value={f.heureDepart} onChange={e=>s("heureDepart",e.target.value)}/></div>
+            <div className="form-group"><label>N° document</label><input value={f.numero} onChange={e=>sv("numero",e.target.value)}/></div>
+            <div className="form-group"><label>Date</label><input type="date" value={f.date} onChange={e=>sv("date",e.target.value)}/></div>
           </div>
         </div>}
-
-        {!isClim&&!isPac&&<div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{attStep===0?"2":"1"}</div>Combustible</div>
-          <div className="form-grid"><div className="form-group"><label>Combustible</label><select value={curAtt.combustible||"Gaz"} onChange={e=>setCurAtt("combustible",e.target.value)}><option>Gaz</option><option>Fioul</option></select></div></div>
+        {isAttSel&&!isClim&&!isPac&&<div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{curSelIdx===0?"2":"1"}</div>Combustible</div>
+          <div className="form-grid"><div className="form-group"><label>Combustible</label><select value={curData.combustible||"Gaz"} onChange={e=>setCurData("combustible",e.target.value)}><option>Gaz</option><option>Fioul</option></select></div></div>
         </div>}
-
-        <div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"2":"1"):(attStep===0?"3":"2")}</div>Mesures{isClim?" températures":isPac?" températures":" combustion"}</div>
+        {isAttSel&&<div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{curSelIdx===0?(isClim||isPac?"2":"3"):(isClim||isPac?"1":"2")}</div>Mesures{isClim||isPac?" températures":" combustion"}</div>
           <div className="form-grid">
             {!isClim&&!isPac&&<>
-              <div className="form-group"><label>CO ambiant (ppm)</label><input type="number" value={curAtt.coAmbiant||""} onChange={e=>setCurAtt("coAmbiant",e.target.value)}/></div>
-              <div className="form-group"><label>CO fumées (ppm)</label><input type="number" value={curAtt.coFumees||""} onChange={e=>setCurAtt("coFumees",e.target.value)}/></div>
-              <div className="form-group"><label>CO₂ (%)</label><input type="number" step="0.1" value={curAtt.co2||""} onChange={e=>setCurAtt("co2",e.target.value)}/></div>
-              <div className="form-group"><label>O₂ (%)</label><input type="number" step="0.1" value={curAtt.o2||""} onChange={e=>setCurAtt("o2",e.target.value)}/></div>
-              <div className="form-group"><label>Temp. fumées (°C)</label><input type="number" value={curAtt.tempFumees||""} onChange={e=>setCurAtt("tempFumees",e.target.value)}/></div>
-              <div className="form-group"><label>Rendement (%)</label><input type="number" step="0.1" value={curAtt.rendement||""} onChange={e=>setCurAtt("rendement",e.target.value)}/></div>
-              <div className="form-group"><label>NOx (mg/kWh)</label><input type="number" value={curAtt.nox||""} onChange={e=>setCurAtt("nox",e.target.value)}/></div>
-              <div className="form-group"><label>Air comburant (°C)</label><input type="number" value={curAtt.tempAir||""} onChange={e=>setCurAtt("tempAir",e.target.value)}/></div>
-              {isFioul&&<><div className="form-group"><label>Gicleur</label><input value={curAtt.gicleur||""} onChange={e=>setCurAtt("gicleur",e.target.value)}/></div>
-              <div className="form-group"><label>Pression pompe (bar)</label><input type="number" step="0.1" value={curAtt.pressionPompe||""} onChange={e=>setCurAtt("pressionPompe",e.target.value)}/></div></>}
+              <div className="form-group"><label>CO ambiant (ppm)</label><input type="number" value={curData.coAmbiant||""} onChange={e=>setCurData("coAmbiant",e.target.value)}/></div>
+              <div className="form-group"><label>CO fumées (ppm)</label><input type="number" value={curData.coFumees||""} onChange={e=>setCurData("coFumees",e.target.value)}/></div>
+              <div className="form-group"><label>CO₂ (%)</label><input type="number" step="0.1" value={curData.co2||""} onChange={e=>setCurData("co2",e.target.value)}/></div>
+              <div className="form-group"><label>O₂ (%)</label><input type="number" step="0.1" value={curData.o2||""} onChange={e=>setCurData("o2",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. fumées (°C)</label><input type="number" value={curData.tempFumees||""} onChange={e=>setCurData("tempFumees",e.target.value)}/></div>
+              <div className="form-group"><label>Air comburant (°C)</label><input type="number" value={curData.tempAir||""} onChange={e=>setCurData("tempAir",e.target.value)}/></div>
+              <div className="form-group"><label>Rendement (%)</label><input type="number" step="0.1" value={curData.rendement||""} onChange={e=>setCurData("rendement",e.target.value)}/></div>
+              <div className="form-group"><label>NOx (mg/kWh)</label><input type="number" value={curData.nox||""} onChange={e=>setCurData("nox",e.target.value)}/></div>
+              {isFioul&&<><div className="form-group"><label>Gicleur</label><input value={curData.gicleur||""} onChange={e=>setCurData("gicleur",e.target.value)}/></div>
+              <div className="form-group"><label>Pression pompe (bar)</label><input type="number" step="0.1" value={curData.pressionPompe||""} onChange={e=>setCurData("pressionPompe",e.target.value)}/></div></>}
             </>}
             {isClim&&<>
-              <div className="form-group"><label>Temp. soufflage (°C)</label><input type="number" step="0.1" value={curAtt.tempSoufflage||""} onChange={e=>setCurAtt("tempSoufflage",e.target.value)}/></div>
-              <div className="form-group"><label>Temp. reprise (°C)</label><input type="number" step="0.1" value={curAtt.tempReprise||""} onChange={e=>setCurAtt("tempReprise",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. soufflage (°C)</label><input type="number" step="0.1" value={curData.tempSoufflage||""} onChange={e=>setCurData("tempSoufflage",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. reprise (°C)</label><input type="number" step="0.1" value={curData.tempReprise||""} onChange={e=>setCurData("tempReprise",e.target.value)}/></div>
             </>}
             {isPac&&<>
-              <div className="form-group"><label>Temp. départ (°C)</label><input type="number" step="0.1" value={curAtt.tempDepart||""} onChange={e=>setCurAtt("tempDepart",e.target.value)}/></div>
-              <div className="form-group"><label>Temp. retour (°C)</label><input type="number" step="0.1" value={curAtt.tempRetour||""} onChange={e=>setCurAtt("tempRetour",e.target.value)}/></div>
-              <div className="form-group"><label>Pression circuit (bar)</label><input type="number" step="0.1" value={curAtt.pression||""} onChange={e=>setCurAtt("pression",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. départ (°C)</label><input type="number" step="0.1" value={curData.tempDepart||""} onChange={e=>setCurData("tempDepart",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. retour (°C)</label><input type="number" step="0.1" value={curData.tempRetour||""} onChange={e=>setCurData("tempRetour",e.target.value)}/></div>
+              <div className="form-group"><label>Pression circuit (bar)</label><input type="number" step="0.1" value={curData.pression||""} onChange={e=>setCurData("pression",e.target.value)}/></div>
             </>}
           </div>
-        </div>
-
-        <div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"3":"2"):(attStep===0?"4":"3")}</div>Points de vérification</div>
+        </div>}
+        {isAttSel&&<div className="wizard-step">
+          <div className="wizard-step-title"><div className="wizard-step-num">{curSelIdx===0?(isClim||isPac?"3":"4"):(isClim||isPac?"2":"3")}</div>Points de vérification</div>
           <div className="checks-grid">
             {checkList.map((c,i)=>(
-              <div key={i} className="check-item" style={{background:curAtt.checks[i]==="nok"?"#ef444410":""}}>
+              <div key={i} className="check-item" style={{background:curData.checks[i]==="nok"?"#ef444410":""}}>
                 <span className="check-label">{c}</span>
                 <div className="check-btns">
-                  <div className={`check-btn${curAtt.checks[i]==="ok"?" ok":""}`} onClick={()=>setCurCheck(i,"ok")}>✓</div>
-                  <div className={`check-btn${curAtt.checks[i]==="nok"?" nok":""}`} onClick={()=>setCurCheck(i,"nok")}>✗</div>
-                  <div className={`check-btn${curAtt.checks[i]==="na"?" na":""}`} onClick={()=>setCurCheck(i,"na")}>—</div>
+                  <div className={`check-btn${curData.checks[i]==="ok"?" ok":""}`} onClick={()=>setCurCheck(i,"ok")}>✓</div>
+                  <div className={`check-btn${curData.checks[i]==="nok"?" nok":""}`} onClick={()=>setCurCheck(i,"nok")}>✗</div>
+                  <div className={`check-btn${curData.checks[i]==="na"?" na":""}`} onClick={()=>setCurCheck(i,"na")}>—</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
+        </div>}
         <div className="wizard-step">
-          <div className="wizard-step-title"><div className="wizard-step-num">{isClim||isPac?(attStep===0?"4":"3"):(attStep===0?"5":"4")}</div>Travaux & Observations</div>
+          <div className="wizard-step-title"><div className="wizard-step-num">{isAttSel?(curSelIdx===0?(isClim||isPac?"4":"5"):(isClim||isPac?"3":"4")):(curSelIdx===0?"2":"1")}</div>Travaux & Observations</div>
           <div className="form-grid">
-            <div className="form-group full"><label>Travaux réalisés</label><textarea value={curAtt.observations||""} onChange={e=>setCurAtt("observations",e.target.value)}/></div>
-            {attStep===0&&<div className="form-group full"><label>Pièces changées</label><textarea value={f.piecesChangees} onChange={e=>s("piecesChangees",e.target.value)} style={{minHeight:48}}/></div>}
+            <div className="form-group full"><label>Travaux réalisés / Observations</label><textarea value={curData.observations||""} onChange={e=>setCurData("observations",e.target.value)}/></div>
           </div>
         </div>
-
         <div className="form-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn btn-ghost" onClick={()=>curSelIdx===0?setStep(1):setCurSelIdx(i=>i-1)}>← Retour</button>
           <button className="btn btn-primary btn-lg" onClick={()=>{
-            if(hasMoreAtts){setAttStep(s=>s+1);}else{setStep(3);}
+            if(curSelIdx<selections.length-1){setCurSelIdx(i=>i+1);}
+            else{hasFacturation?setStep(3):setStep(4);}
           }}>
-            {hasMoreAtts?`Attestation suivante (${attStep+2}/${totalAtts}) →`:"Devis / Facture →"}
+            {curSelIdx<selections.length-1?`Suivant (${curSelIdx+2}/${selections.length}) →`:hasFacturation?"Devis / Facture →":"Signatures →"}
           </button>
         </div>
       </>}
@@ -1320,7 +1306,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
           ))}
         </div>
         {docTab!=="aucun"&&<>
-          <div className="form-group" style={{marginBottom:14}}><label>Objet</label><input value={docObjet} onChange={e=>setDocObjet(e.target.value)} placeholder="Ex: Entretien annuel chaudière"/></div>
+          <div className="form-group" style={{marginBottom:14}}><label>Objet</label><input value={docObjet} onChange={e=>setDocObjet(e.target.value)} placeholder="Ex: Dépannage chaudière"/></div>
           <button className="btn btn-secondary btn-sm" onClick={()=>setShowCatWizard(p=>!p)} style={{marginBottom:10}}>📚 {showCatWizard?"Masquer":"Bibliothèque"}</button>
           {showCatWizard&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:6,maxHeight:160,overflowY:"auto",marginBottom:10}}>
             {catalogue.map(item=><div key={item.id} onClick={()=>addFromCatWizard(item)} style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}><div style={{fontWeight:600,fontSize:"0.8rem"}}>{item.designation}</div><div style={{fontSize:"0.72rem",color:"var(--muted)"}}>{money(item.pu)} · TVA {item.tva}%</div></div>)}
@@ -1346,7 +1332,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       </>}
 
       {step===4&&<>
-        <div style={{display:"flex",gap:8,marginBottom:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setStep(3)}>← Retour</button></div>
+        <div style={{display:"flex",gap:8,marginBottom:18}}><button className="btn btn-ghost btn-sm" onClick={()=>hasFacturation?setStep(3):setStep(2)}>← Retour</button></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
           <div className="card"><div className="card-title">✍️ Technicien</div><SignaturePad label="Signez ici" onSave={setSigTech} existingSig={sigTech}/></div>
           <div className="card" style={{borderColor:"#3b82f640"}}><div className="card-title" style={{color:"#60a5fa"}}>✍️ Client</div><SignaturePad label="Signez ici" onSave={setSigClient} existingSig={sigClient}/></div>
@@ -1360,7 +1346,6 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
     </div></div>
   );
 }
-
 function PageDashboard({clients,rdvs,docs}) {
   const auj=todayStr();
   const rdvAuj=rdvs.filter(r=>r.date===auj).length;
