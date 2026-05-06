@@ -855,6 +855,12 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
         </div>
 
+        {/* ENCAISSEMENT */}
+        {(doc.montantEncaisse||doc.modeReglement)&&<div style={{background:"#f7f9ff",border:"1px solid #dce8ff",borderRadius:4,padding:"2mm",marginBottom:"2.5mm",display:"flex",gap:"4mm",alignItems:"center"}}>
+          <span style={{fontSize:"7pt"}}>💰</span>
+          <div><span style={{fontSize:"6pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Encaissement : </span><span style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db"}}>{doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</span></div>
+        </div>}
+
         {/* SIGNATURES en bas sur toute la largeur */}
         <div className="a4-sig">
           <div className="a4-sig-box">
@@ -1136,7 +1142,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
   const isFioul=curData.combustible==="Fioul";
   const checkList=isClim?CHECKS_CLIM:isPac?CHECKS_PAC:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
   const isAttSel=curSel?.action==="attestation";
-  const hasFacturation=selections.some(s=>s.action==="depannage"||s.action==="remplacement");
+  const hasFacturation=false;
 
   const getEquipActions=(eq)=>{
     const base=[{action:"depannage",icon:"⚠️",label:"Dépannage"},{action:"remplacement",icon:"🔩",label:"Remplacement de pièces"}];
@@ -1154,7 +1160,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       const d=selData[i]||{};
       if(sel.action==="attestation"){
         const attType=getAttType(eq);
-        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
+        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,montantEncaisse:f.montantEncaisse,modeReglement:f.modeReglement,sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
       } else if(sel.action==="depannage"){
         newDocs.push({type:"Dépannage",typeIntervention:"Dépannage",numero:`DEP-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:d.observations||"",piecesChangees:d.piecesChangees||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:eq,sigTech,sigClient});
       } else if(sel.action==="remplacement"){
@@ -1169,7 +1175,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
     <div className="modal-overlay"><div className="modal modal-xl" style={{maxWidth:820}}>
       <div className="no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div className="modal-title" style={{marginBottom:0}}>
-          {step===1?"Démarrer":step===2?`${curSelIdx+1}/${selections.length} — ${curEquip.marque||curEquip.marqueClim||curEquip.marquePac||curEquip.type||""}`:step===3?"Devis / Facture":"Signatures"}
+          {step===1?"Démarrer":step===2?`${curSelIdx+1}/${selections.length} — ${curEquip.marque||curEquip.marqueClim||curEquip.marquePac||curEquip.type||""}`:step===3?"Encaissement & Signatures":"Signatures"}
         </div>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
       </div>
@@ -1294,48 +1300,30 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
           <button className="btn btn-ghost" onClick={()=>curSelIdx===0?setStep(1):setCurSelIdx(i=>i-1)}>← Retour</button>
           <button className="btn btn-primary btn-lg" onClick={()=>{
             if(curSelIdx<selections.length-1){setCurSelIdx(i=>i+1);}
-            else{hasFacturation?setStep(3):setStep(4);}
+            else{setStep(3);}
           }}>
-            {curSelIdx<selections.length-1?`Suivant (${curSelIdx+2}/${selections.length}) →`:hasFacturation?"Devis / Facture →":"Signatures →"}
+            {curSelIdx<selections.length-1?`Suivant (${curSelIdx+2}/${selections.length}) →`:"Encaissement & Signatures →"}
           </button>
         </div>
       </>}
 
       {step===3&&<>
-        <div style={{display:"flex",gap:8,marginBottom:16}}><button className="btn btn-ghost btn-sm" onClick={()=>setStep(2)}>← Retour</button></div>
-        <div style={{display:"flex",gap:8,marginBottom:16,background:"var(--surface2)",borderRadius:10,padding:4}}>
-          {[["facture","🧾 Facture"],["devis","📋 Devis"],["aucun","⏭ Passer"]].map(item=>(
-            <button key={item[0]} onClick={()=>setDocTab(item[0])} className={`btn${docTab===item[0]?" btn-primary":" btn-ghost"}`} style={{flex:1,justifyContent:"center"}}>{item[1]}</button>
-          ))}
+        <div style={{display:"flex",gap:8,marginBottom:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setStep(2)}>← Retour</button></div>
+        <div className="card" style={{marginBottom:16}}>
+          <div className="card-title">💰 Encaissement</div>
+          <div className="form-grid">
+            <div className="form-group"><label>Montant encaissé (€)</label><input type="number" step="0.01" value={f.montantEncaisse||""} onChange={e=>sv("montantEncaisse",e.target.value)} placeholder="0.00"/></div>
+            <div className="form-group"><label>Mode de règlement</label>
+              <select value={f.modeReglement||""} onChange={e=>sv("modeReglement",e.target.value)}>
+                <option value="">— Aucun encaissement —</option>
+                <option>Espèces</option>
+                <option>Chèque</option>
+                <option>Virement</option>
+                <option>Carte bancaire</option>
+              </select>
+            </div>
+          </div>
         </div>
-        {docTab!=="aucun"&&<>
-          <div className="form-group" style={{marginBottom:14}}><label>Objet</label><input value={docObjet} onChange={e=>setDocObjet(e.target.value)} placeholder="Ex: Dépannage chaudière"/></div>
-          <button className="btn btn-secondary btn-sm" onClick={()=>setShowCatWizard(p=>!p)} style={{marginBottom:10}}>📚 {showCatWizard?"Masquer":"Bibliothèque"}</button>
-          {showCatWizard&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:6,maxHeight:160,overflowY:"auto",marginBottom:10}}>
-            {catalogue.map(item=><div key={item.id} onClick={()=>addFromCatWizard(item)} style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}><div style={{fontWeight:600,fontSize:"0.8rem"}}>{item.designation}</div><div style={{fontSize:"0.72rem",color:"var(--muted)"}}>{money(item.pu)} · TVA {item.tva}%</div></div>)}
-          </div>}
-          {docLignes.length>0&&<div style={{background:"var(--surface2)",borderRadius:10,padding:10,marginBottom:10}}>
-            {docLignes.map((l,i)=>(
-              <div key={i} style={{display:"grid",gridTemplateColumns:"2.5fr 0.5fr 0.8fr 0.8fr auto",gap:6,marginBottom:6,alignItems:"center",background:"var(--surface)",borderRadius:8,padding:"7px 10px"}}>
-                <input value={l.designation||""} onChange={e=>setDocLine(i,"designation",e.target.value)} placeholder="Désignation"/>
-                <input type="number" value={l.qte||1} onChange={e=>setDocLine(i,"qte",e.target.value)} min={0}/>
-                <input type="number" value={l.pu||0} onChange={e=>setDocLine(i,"pu",e.target.value)} min={0}/>
-                <select value={l.tva||10} onChange={e=>setDocLine(i,"tva",Number(e.target.value))}><option value={0}>0%</option><option value={5.5}>5.5%</option><option value={10}>10%</option><option value={20}>20%</option></select>
-                <button className="btn btn-danger btn-sm" onClick={()=>delDocLine(i)}>✕</button>
-              </div>
-            ))}
-          </div>}
-          <button className="btn btn-secondary btn-sm" onClick={addDocLine} style={{marginBottom:14}}>+ Ligne manuelle</button>
-          {docLignes.length>0&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}><div style={{background:"var(--surface2)",borderRadius:10,padding:"10px 16px",minWidth:220,textAlign:"right"}}><div style={{fontSize:"0.82rem",color:"var(--muted)",marginBottom:3}}>HT : {money(docHT)} · TVA : {money(docTVAmt)}</div><div style={{fontSize:"1rem",fontWeight:700,color:"var(--accent)"}}>TTC : {money(docTTC)}</div></div></div>}
-        </>}
-        <div className="form-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-primary btn-lg" onClick={()=>setStep(4)}>Signatures →</button>
-        </div>
-      </>}
-
-      {step===4&&<>
-        <div style={{display:"flex",gap:8,marginBottom:18}}><button className="btn btn-ghost btn-sm" onClick={()=>hasFacturation?setStep(3):setStep(2)}>← Retour</button></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
           <div className="card"><div className="card-title">✍️ Technicien</div><SignaturePad label="Signez ici" onSave={setSigTech} existingSig={sigTech}/></div>
           <div className="card" style={{borderColor:"#3b82f640"}}><div className="card-title" style={{color:"#60a5fa"}}>✍️ Client</div><SignaturePad label="Signez ici" onSave={setSigClient} existingSig={sigClient}/></div>
@@ -1887,12 +1875,11 @@ const NAV=[
   {id:"dashboard",label:"Accueil",icon:"🏠"},
   {id:"agenda",label:"Agenda",icon:"📅"},
   {id:"clients",label:"Clients",icon:"👥"},
-  {id:"devis",label:"Devis/Fact.",icon:"🧾"},
   {id:"relances",label:"Relances",icon:"🔔"},
   {id:"documents",label:"Docs",icon:"📄"},
   {id:"settings",label:"Réglages",icon:"⚙️"},
 ];
-const LABELS={dashboard:"Tableau de bord",agenda:"Agenda",clients:"Carnet clients",devis:"Devis & Factures",relances:"Relances",documents:"Documents",settings:"Paramètres"};
+const LABELS={dashboard:"Tableau de bord",agenda:"Agenda",clients:"Carnet clients",relances:"Relances",documents:"Documents",settings:"Paramètres"};
 const MOT_DE_PASSE="chachou34500";
 
 function LoginScreen({onLogin}) {
