@@ -62,8 +62,8 @@ const CSS = `
   .btn-ghost:hover{color:var(--text);}
   .btn-danger{background:#ef444420;color:var(--danger);border:1px solid #ef444435;}
   .btn-success{background:#22c55e20;color:var(--success);border:1px solid #22c55e35;}
-  .btn-gmail{background:#ea433520;color:#ea4335;border:1px solid #ea433540;}
-  .btn-gmail:hover{background:#ea433530;}
+  .btn-mail{background:#ea433520;color:#ea4335;border:1px solid #ea433540;}
+  .btn-mail:hover{background:#ea433530;}
   .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px;}
   .btn-lg{padding:13px 24px;font-size:0.95rem;border-radius:11px;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
@@ -321,8 +321,8 @@ const genNumero = (type, docs, devis) => {
   return `FAC-${year}-${String(nb).padStart(3,"0")}`;
 };
 
-function sendGmail(to, subject, body) {
-  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,"_blank");
+function sendMail(to, subject, body) {
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to||"")}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,"_blank");
 }
 
 function SignaturePad({label, onSave, existingSig}) {
@@ -451,7 +451,7 @@ function DocWrapper({title, onClose, onMail, children}) {
         <div className="no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <span className="modal-title" style={{marginBottom:0}}>{title}</span>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {onMail&&<button className="btn btn-gmail btn-sm" onClick={onMail}>✉️ Gmail</button>}
+            {onMail&&<button className="btn btn-mail btn-sm" onClick={onMail}>✉️ Mail</button>}
             <button className="btn btn-primary btn-sm" onClick={handlePDF} disabled={generating}>
               {generating ? "⏳ Génération..." : "📄 PDF / Imprimer"}
             </button>
@@ -526,7 +526,7 @@ function DocDevis({doc, client, societe, onClose, onTransform}) {
   const ttc=(doc.lignes||[]).reduce((s,l)=>s+Number(l.qte)*Number(l.pu)*(1+Number(l.tva||10)/100),0);
   const mailBody=`Bonjour ${client?.prenom} ${client?.nom},\n\nVotre devis N° ${doc.numero} du ${fmt(doc.date)} d'un montant de ${money(ttc)} TTC.\nValidité : ${fmt(doc.validite)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}\n${societe.tel}`;
   return (
-    <DocWrapper title="Devis" onClose={onClose} onMail={client?.email?()=>sendGmail(client.email,`Devis ${doc.numero} — ${societe.nom}`,mailBody):null}>
+    <DocWrapper title="Devis" onClose={onClose} onMail={client?.email?()=>sendMail(client.email,`Devis ${doc.numero} — ${societe.nom}`,mailBody):null}>
       <div className="no-print" style={{marginBottom:12}}>
         {doc.statut==="Accepté"?<span className="badge badge-success" style={{fontSize:"0.85rem",padding:"6px 14px"}}>✓ Accepté</span>:doc.statut==="Refusé"?<span className="badge badge-danger" style={{fontSize:"0.85rem",padding:"6px 14px"}}>✗ Refusé</span>:<span className="badge badge-warning" style={{fontSize:"0.85rem",padding:"6px 14px"}}>En attente</span>}
         {doc.statut!=="Refusé"&&doc.statut!=="Facturé"&&onTransform&&<button className="btn btn-primary btn-sm" style={{marginLeft:10}} onClick={onTransform}>🧾 → Facture</button>}
@@ -551,7 +551,7 @@ function DocFacture({doc, client, societe, onClose}) {
   const totalTTC=totalHT+totalTVA;
   const mailBody=`Bonjour ${client?.prenom} ${client?.nom},\n\nVotre facture N° ${doc.numero} du ${fmt(doc.date)} d'un montant de ${money(totalTTC)} TTC.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`;
   return (
-    <DocWrapper title="Facture" onClose={onClose} onMail={client?.email?()=>sendGmail(client.email,`Facture ${doc.numero} — ${societe.nom}`,mailBody):null}>
+    <DocWrapper title="Facture" onClose={onClose} onMail={client?.email?()=>sendMail(client.email,`Facture ${doc.numero} — ${societe.nom}`,mailBody):null}>
       <div className="doc-preview">
         <DocEntete societe={societe} client={client} type="FACTURE" numero={doc.numero} date={doc.date} dateEcheance={doc.dateEcheance}/>
         {doc.objet&&<div style={{marginBottom:12,fontSize:12}}><strong>Objet :</strong> {doc.objet}</div>}
@@ -591,7 +591,7 @@ function DocBon({doc, client, societe, onClose}) {
     .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendGmail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n${doc.observations||""}`)}>
+    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendMail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n${doc.observations||""}`)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -725,7 +725,7 @@ function DocAttestation({doc, client, societe, onClose}) {
     .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendGmail(client?.email||"",`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`)}>
+    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendMail(client?.email||"",`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -1149,13 +1149,16 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
 
   const handleSave=()=>{
     const newDocs=[];
-    newDocs.push({type:"Bon d'intervention",typeIntervention:rdv.type,numero:`BI-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:selData[0]?.observations||"",piecesChangees:f.piecesChangees,heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:equips[0]||{},sigTech,sigClient});
     selections.forEach((sel,i)=>{
       const eq=equips[sel.equipIdx]||{};
       const d=selData[i]||{};
       if(sel.action==="attestation"){
         const attType=getAttType(eq);
-        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
+        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
+      } else if(sel.action==="depannage"){
+        newDocs.push({type:"Dépannage",typeIntervention:"Dépannage",numero:`DEP-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:d.observations||"",piecesChangees:d.piecesChangees||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:eq,sigTech,sigClient});
+      } else if(sel.action==="remplacement"){
+        newDocs.push({type:"Remplacement de pièces",typeIntervention:"Remplacement de pièces",numero:`RMP-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:d.observations||"",piecesChangees:d.piecesChangees||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:eq,sigTech,sigClient});
       }
     });
     if(hasFacturation&&docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||rdv.type,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
@@ -1775,13 +1778,17 @@ function getLastEntretien(clientId,docs){return docs.filter(d=>d.clientId===clie
 function moisDepuis(dateStr){if(!dateStr)return 999;const d=new Date(dateStr),now=new Date();return(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());}
 
 function PageRelances({clients,docs,rdvs,setRdvs}) {
+  const [ignorees,setIgnorees]=useState(()=>{try{return JSON.parse(localStorage.getItem("relances-ignorees")||"[]");}catch{return[];}});
+  const ignorer=key=>{const n=[...ignorees,key];setIgnorees(n);try{localStorage.setItem("relances-ignorees",JSON.stringify(n));}catch{}};
+  const restaurer=()=>{setIgnorees([]);try{localStorage.removeItem("relances-ignorees");}catch{}};
   const relances=[];
   clients.forEach(client=>{
     (client.equipements||[]).forEach(equip=>{
       if(!EQUIP_RELANCE.includes(equip.type))return;
       const lastDate=getLastEntretien(client.id,docs);
       const mois=moisDepuis(lastDate);
-      if(mois>=DELAI_RELANCE)relances.push({client,equip,lastDate,mois});
+      const key=`${client.id}-${equip.id}`;
+      if(mois>=DELAI_RELANCE&&!ignorees.includes(key))relances.push({client,equip,lastDate,mois,key});
     });
   });
   relances.sort((a,b)=>b.mois-a.mois);
@@ -1792,6 +1799,7 @@ function PageRelances({clients,docs,rdvs,setRdvs}) {
         <div className="stat"><div className="stat-label">À relancer</div><div className="stat-value" style={{color:"var(--warning)"}}>{relances.length}</div></div>
         <div className="stat"><div className="stat-label">🔴 Urgents +13 mois</div><div className="stat-value" style={{color:"var(--danger)"}}>{relances.filter(r=>r.mois>=13).length}</div></div>
       </div>
+      {ignorees.length>0&&<div style={{textAlign:"right",marginBottom:10}}><button className="btn btn-ghost btn-sm" onClick={restaurer}>↩ Restaurer les ignorées ({ignorees.length})</button></div>}
       {relances.length===0&&<div className="empty"><div className="icon">🎉</div><p>Tous vos clients sont à jour !</p></div>}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {relances.map((r,i)=>{
@@ -1805,6 +1813,7 @@ function PageRelances({clients,docs,rdvs,setRdvs}) {
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {r.client.tel&&<a href={`tel:${r.client.tel.replace(/\s/g,"")}`} className="btn btn-secondary btn-sm" style={{textDecoration:"none"}}>📞 Appeler</a>}
               <button className="btn btn-primary btn-sm" onClick={()=>createRdv(r.client)}>📅 RDV</button>
+              <button className="btn btn-danger btn-sm" onClick={()=>ignorer(r.key)}>🗑 Supprimer</button>
             </div>
           </div>);
         })}
