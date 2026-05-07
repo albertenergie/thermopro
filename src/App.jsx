@@ -391,7 +391,7 @@ function DocWrapper({title, onClose, onMail, children}) {
       // Forcer les styles A4 sur la page
       const style = document.createElement("style");
       style.textContent = `
-        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:30px 36px!important;font-size:8pt!important;}
+        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:24px 30px!important;font-size:7.5pt!important;}
         .a4-g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
         .a4-g4{display:grid!important;grid-template-columns:1fr 1fr 1fr 1fr!important;gap:8px!important;}
         .a4-checks{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px!important;}
@@ -684,45 +684,45 @@ function DocAttestation({doc, client, societe, onClose}) {
   const comb=doc.combustion||{};
   const typeLabel=isClim?"CLIMATISATION":isPac?"POMPE À CHALEUR":isFioul?"CHAUDIÈRE FIOUL":"CHAUDIÈRE GAZ";
   const CSS_A4=`
-    .a4page{font-family:'DM Sans',sans-serif;font-size:8pt;color:#111;background:#fff;padding:11mm 13mm;max-width:210mm;margin:0 auto;}
-    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5mm;padding-bottom:3mm;border-bottom:2px solid #1a56db;}
-    .a4-company{font-size:7pt;line-height:1.6;color:#333;}.a4-company strong{font-size:9.5pt;color:#111;display:block;}
-    .a4-logo{font-size:15pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
-    .a4-title{background:#1a56db;color:#fff;text-align:center;padding:3px 0;font-size:9.5pt;font-weight:700;letter-spacing:1px;margin-bottom:4mm;border-radius:3px;}
-    .a4-sec{margin-bottom:3mm;}.a4-sec-t{font-size:7pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:2px;margin-bottom:2mm;}
-    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:3mm;}
-    .a4-f{display:flex;flex-direction:column;gap:1px;}.a4-f label{font-size:6pt;color:#888;text-transform:uppercase;font-weight:600;}
-    .a4-f .v{border-bottom:1px solid #ccc;min-height:13px;font-size:7.5pt;padding:1px 2px;color:#111;font-weight:500;}
-    .a4-box{background:#f7f9ff;border:1px solid #dce8ff;border-radius:4px;padding:2.5mm;}
-    .a4-comb{display:flex;gap:2mm;flex-wrap:wrap;}
-    .a4-ci{background:#f7f9ff;border:1px solid #dce8ff;border-radius:3px;padding:2px 5px;text-align:center;flex:1;min-width:22mm;}
-    .a4-ci .cl{font-size:5.5pt;color:#888;text-transform:uppercase;}
-    .a4-ci .cv{font-size:8.5pt;font-weight:700;color:#1a56db;}
-    .a4-ci .cu{font-size:5.5pt;color:#aaa;}
-    .a4-checks{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm;}
-    .a4-chk{display:flex;align-items:center;gap:3px;font-size:7pt;}
-    .a4-chkbox{width:10px;height:10px;border:1px solid #aaa;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:7px;font-weight:700;}
+    .a4page{font-family:'DM Sans',sans-serif;font-size:7.5pt;color:#111;background:#fff;padding:8mm 10mm;max-width:210mm;margin:0 auto;}
+    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm;padding-bottom:2mm;border-bottom:2px solid #1a56db;}
+    .a4-company{font-size:6.5pt;line-height:1.5;color:#333;}.a4-company strong{font-size:9pt;color:#111;display:block;}
+    .a4-logo{font-size:13pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
+    .a4-title{background:#1a56db;color:#fff;text-align:center;padding:2px 0;font-size:9pt;font-weight:700;letter-spacing:1px;margin-bottom:3mm;border-radius:3px;}
+    .a4-sec{margin-bottom:2mm;}.a4-sec-t{font-size:6.5pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:1px;margin-bottom:1.5mm;}
+    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:2.5mm;}
+    .a4-f{display:flex;flex-direction:column;gap:1px;}.a4-f label{font-size:5.5pt;color:#888;text-transform:uppercase;font-weight:600;}
+    .a4-f .v{border-bottom:1px solid #ccc;min-height:11px;font-size:7pt;padding:1px 2px;color:#111;font-weight:500;}
+    .a4-box{background:#f7f9ff;border:1px solid #dce8ff;border-radius:4px;padding:2mm;}
+    .a4-comb{display:flex;gap:1.5mm;flex-wrap:wrap;}
+    .a4-ci{background:#f7f9ff;border:1px solid #dce8ff;border-radius:3px;padding:1.5px 4px;text-align:center;flex:1;min-width:20mm;}
+    .a4-ci .cl{font-size:5pt;color:#888;text-transform:uppercase;}
+    .a4-ci .cv{font-size:8pt;font-weight:700;color:#1a56db;}
+    .a4-ci .cu{font-size:5pt;color:#aaa;}
+    .a4-checks{display:grid;grid-template-columns:1fr 1fr;gap:1mm;}
+    .a4-chk{display:flex;align-items:center;gap:3px;font-size:6.5pt;}
+    .a4-chkbox{width:9px;height:9px;border:1px solid #aaa;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:6px;font-weight:700;}
     .a4-chkbox.ok{background:#e8f5e9;border-color:#4caf50;color:#2e7d32;}
     .a4-chkbox.nok{background:#ffebee;border-color:#f44336;color:#c62828;}
     .a4-chkbox.na{background:#f5f5f5;border-color:#bbb;color:#777;}
-    .a4-travaux{border:1px solid #ddd;border-radius:3px;padding:2mm;min-height:12mm;font-size:7.5pt;color:#333;white-space:pre-wrap;}
-    .a4-rend{border:1px solid #1a56db30;border-radius:3px;padding:2mm;display:grid;grid-template-columns:1fr 1fr;gap:2mm;}
-    .a4-rend label{font-size:6pt;color:#888;text-transform:uppercase;font-weight:600;display:block;}
-    .a4-rend .v{font-size:8pt;font-weight:700;color:#1a56db;border-bottom:1px solid #ccc;padding:1px 2px;}
-    .a4-classif{width:100%;border-collapse:collapse;font-size:6.5pt;margin-top:1mm;}
-    .a4-classif th{background:#1a56db;color:#fff;padding:2px 4px;text-align:left;font-weight:600;}
-    .a4-classif td{padding:2px 4px;border-bottom:1px solid #eee;}
+    .a4-travaux{border:1px solid #ddd;border-radius:3px;padding:1.5mm;min-height:9mm;font-size:7pt;color:#333;white-space:pre-wrap;}
+    .a4-rend{border:1px solid #1a56db30;border-radius:3px;padding:1.5mm;display:grid;grid-template-columns:1fr 1fr;gap:1.5mm;}
+    .a4-rend label{font-size:5.5pt;color:#888;text-transform:uppercase;font-weight:600;display:block;}
+    .a4-rend .v{font-size:7.5pt;font-weight:700;color:#1a56db;border-bottom:1px solid #ccc;padding:1px 2px;}
+    .a4-classif{width:100%;border-collapse:collapse;font-size:6pt;margin-top:0.5mm;}
+    .a4-classif th{background:#1a56db;color:#fff;padding:1.5px 3px;text-align:left;font-weight:600;}
+    .a4-classif td{padding:1.5px 3px;border-bottom:1px solid #eee;}
     .a4-classif tr:nth-child(even) td{background:#f7f9ff;}
-    .a4-badge-cls{display:inline-block;background:#1a56db;color:#fff;border-radius:2px;padding:0 4px;font-weight:700;font-size:8pt;}
-    .a4-nonconf{border:1px solid #ddd;border-radius:3px;background:#fafafa;padding:2mm;}
-    .a4-nonconf-t{font-size:7pt;font-weight:700;margin-bottom:1mm;}
-    .a4-nonconf-txt{font-size:7pt;color:#333;line-height:1.5;}
-    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:3mm;}
-    .a4-sig-box{border:1px solid #ddd;border-radius:4px;padding:2.5mm;min-height:18mm;display:flex;flex-direction:column;}
-    .a4-sig-label{font-size:6.5pt;color:#888;margin-bottom:2mm;font-weight:600;}
-    .a4-sig-line{margin-top:auto;border-top:1px dashed #ccc;padding-top:2px;font-size:6pt;color:#aaa;}
-    .a4-footer{margin-top:3mm;padding-top:2mm;border-top:1px solid #eee;text-align:center;font-size:6pt;color:#aaa;}
-    .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
+    .a4-badge-cls{display:inline-block;background:#1a56db;color:#fff;border-radius:2px;padding:0 3px;font-weight:700;font-size:7.5pt;}
+    .a4-nonconf{border:1px solid #ddd;border-radius:3px;background:#fafafa;padding:1.5mm;}
+    .a4-nonconf-t{font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;}
+    .a4-nonconf-txt{font-size:6.5pt;color:#333;line-height:1.4;}
+    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:2mm;margin-top:2mm;}
+    .a4-sig-box{border:1px solid #ddd;border-radius:4px;padding:2mm;min-height:14mm;display:flex;flex-direction:column;}
+    .a4-sig-label{font-size:6pt;color:#888;margin-bottom:1mm;font-weight:600;}
+    .a4-sig-line{margin-top:auto;border-top:1px dashed #ccc;padding-top:1px;font-size:5.5pt;color:#aaa;}
+    .a4-footer{margin-top:2mm;padding-top:1.5mm;border-top:1px solid #eee;text-align:center;font-size:5.5pt;color:#aaa;}
+    .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 5px;font-size:6.5pt;font-weight:700;}
   `;
   return (
     <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendMail(client?.email||"",`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`)}>
@@ -855,13 +855,7 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
         </div>
 
-        {/* ENCAISSEMENT */}
-        {(doc.montantEncaisse||doc.modeReglement)&&<div style={{background:"#f7f9ff",border:"1px solid #dce8ff",borderRadius:4,padding:"2mm",marginBottom:"2.5mm",display:"flex",gap:"4mm",alignItems:"center"}}>
-          <span style={{fontSize:"7pt"}}>💰</span>
-          <div><span style={{fontSize:"6pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Encaissement : </span><span style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db"}}>{doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</span></div>
-        </div>}
-
-        {/* SIGNATURES en bas sur toute la largeur */}
+        {/* SIGNATURES + ENCAISSEMENT */}
         <div className="a4-sig">
           <div className="a4-sig-box">
             <div className="a4-sig-label">Technicien</div>
@@ -871,6 +865,7 @@ function DocAttestation({doc, client, societe, onClose}) {
           <div className="a4-sig-box">
             <div className="a4-sig-label">Client — Bon pour accord</div>
             {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:40,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
             <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
