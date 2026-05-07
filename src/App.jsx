@@ -1371,7 +1371,7 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
   );
 }
 
-function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue}) {
+function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe}) {
   const [viewMode,setViewMode]=useState("jour");
   const [year,setYear]=useState(TODAY.getFullYear());
   const [month,setMonth]=useState(TODAY.getMonth());
@@ -1405,8 +1405,8 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue}) {
     <div className="content">
       {modalRdv&&<ModalRdv rdv={modalRdv.rdv} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
       {wizard&&<WizardAgenda rdv={wizard.rdv} client={wizard.client} docs={docs} catalogue={catalogue} onSave={saveIntervention} onClose={()=>setWizard(null)}/>}
-      {preview&&isAtt(preview.doc.type)&&<DocAttestation doc={preview.doc} client={preview.client} societe={INIT_SOCIETE} onClose={()=>setPreview(null)}/>}
-      {preview&&!isAtt(preview.doc.type)&&<DocBon doc={preview.doc} client={preview.client} societe={INIT_SOCIETE} onClose={()=>setPreview(null)}/>}
+      {preview&&isAtt(preview.doc.type)&&<DocAttestation doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
+      {preview&&!isAtt(preview.doc.type)&&<DocBon doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
           <div className="agenda-view-toggle">
@@ -1982,7 +1982,7 @@ export default function App() {
             <div style={{fontSize:"0.8rem",color:"var(--muted)"}}>{societe.nom}</div>
           </div>
           {page==="dashboard"&&<PageDashboard clients={clients} rdvs={rdvs} docs={docs} setDocs={setDocs}/>}
-          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue}/>}
+          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue} societe={societe}/>}
           {page==="clients"&&<PageClients clients={clients} setClients={setClients} docs={docs} setDocs={setDocs} rdvs={rdvs} societe={societe}/>}
           {page==="devis"&&<PageDevisFactures clients={clients} docs={docs} setDocs={setDocs} devis={devis} setDevis={setDevis} societe={societe} catalogue={catalogue} setCatalogue={setCatalogue}/>}
           {page==="relances"&&<PageRelances clients={clients} docs={docs} rdvs={rdvs} setRdvs={setRdvs}/>}
