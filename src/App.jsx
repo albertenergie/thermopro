@@ -631,7 +631,6 @@ function DocBon({doc, client, societe, onClose}) {
             <div className="a4-f"><label>Énergie / Type</label><div className="v">{equip.gaz||equip.type||"—"}</div></div>
             <div className="a4-f"><label>Conduit évacuation</label><div className="v">{equip.conduit||"—"}</div></div>
             <div className="a4-f"><label>Année</label><div className="v">{equip.annee||equip.anneeClim||"—"}</div></div>
-            <div className="a4-f"><label>État général</label><div className="v"><span className="a4-badge">✓ Bon état</span></div></div>
           </div>
         </div>
         <div className="a4-g2" style={{marginBottom:"3mm"}}>
@@ -760,7 +759,6 @@ function DocAttestation({doc, client, societe, onClose}) {
         {/* DATE + ÉTAT */}
         <div className="a4-g2" style={{marginBottom:"2.5mm"}}>
           <div className="a4-f"><label>Date d'entretien</label><div className="v">{fmt(doc.date)}</div></div>
-          <div className="a4-f"><label>État général</label><div className="v"><span className="a4-etat">✓ Bon état de fonctionnement</span></div></div>
         </div>
 
         {/* LAYOUT 2 COLONNES */}
@@ -951,7 +949,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </div>
           </div>
         </>}
-        {isChaud&&<><div className="form-group"><label>Marque</label><select value={equip.marque||""} onChange={e=>s("marque",e.target.value)}><option value="">—</option>{MARQUES_CHAUDIERE.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div></>}
+        {isChaud&&<><div className="form-group"><label>Marque</label><select value={equip.marque||""} onChange={e=>s("marque",e.target.value)}><option value="">—</option>{MARQUES_CHAUDIERE.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div>{isGaz&&<div className="form-group"><label>Type de gaz</label><select value={equip.gaz||"Gaz naturel"} onChange={e=>s("gaz",e.target.value)}><option>Gaz naturel</option><option>Propane</option><option>Butane</option></select></div>}</>}
         {isFioul&&<><div className="form-group"><label>Marque brûleur</label><input value={equip.marqueBruleur||""} onChange={e=>s("marqueBruleur",e.target.value)}/></div><div className="form-group"><label>Modèle brûleur</label><input value={equip.modeleBruleur||""} onChange={e=>s("modeleBruleur",e.target.value)}/></div><div className="form-group"><label>Marque gicleur</label><select value={equip.marqueGicleur||"Steinen"} onChange={e=>s("marqueGicleur",e.target.value)}>{MARQUES_GICLEUR.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Débit (gal/h)</label><input value={equip.debitGicleur||""} onChange={e=>s("debitGicleur",e.target.value)}/></div><div className="form-group"><label>Angle</label><select value={equip.angleGicleur||"60°"} onChange={e=>s("angleGicleur",e.target.value)}>{ANGLES_GICLEUR.map(a=><option key={a}>{a}</option>)}</select></div><div className="form-group"><label>Spectre</label><select value={equip.spectreGicleur||"S (solide)"} onChange={e=>s("spectreGicleur",e.target.value)}>{SPECTRES_GICLEUR.map(sp=><option key={sp}>{sp}</option>)}</select></div></>}
         <div style={{gridColumn:"1/-1",marginTop:6,fontSize:"0.75rem",fontWeight:700,color:"var(--muted)",textTransform:"uppercase",borderTop:"1px solid var(--border)",paddingTop:12}}>📄 Contrat</div>
         <div className="form-group"><label>Type contrat</label><select value={equip.contrat||""} onChange={e=>s("contrat",e.target.value)}><option value="">Aucun</option><option>Contrat entretien</option><option>Contrat pièces et MO</option><option>Autre</option></select></div>
@@ -1334,21 +1332,41 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
 }
 function PageDashboard({clients,rdvs,docs}) {
   const auj=todayStr();
+  const moisCourant=auj.slice(0,7);
   const rdvAuj=rdvs.filter(r=>r.date===auj).length;
   const rdvAV=rdvs.filter(r=>r.date>=auj).length;
-  const caM=docs.filter(d=>d.statut==="Payée"&&d.date?.slice(0,7)===auj.slice(0,7)).reduce((s,d)=>{const ht=(d.lignes||[]).reduce((a,l)=>a+l.qte*l.pu,0);return s+ht*(1+(d.tva||10)/100);},0);
-  const imp=docs.filter(d=>["Bon d'intervention","Dépannage"].includes(d.type)&&d.statut!=="Payée"&&d.statut!=="Annulée").length;
+
+  // Montant encaissé ce mois
+  const encaisse=docs.filter(d=>d.montantEncaisse&&d.date?.slice(0,7)===moisCourant)
+    .reduce((s,d)=>s+Number(d.montantEncaisse||0),0);
+
+  // Impayés = docs sans montant encaissé
+  const impayes=docs.filter(d=>["Attestation Gaz","Attestation Fioul","Attestation Clim","Attestation PAC","Dépannage","Remplacement de pièces"].includes(d.type)&&!d.montantEncaisse);
+
   return (
     <div className="content">
       <div className="stats-grid">
         <div className="stat"><div className="stat-label">Clients</div><div className="stat-value" style={{color:"#60a5fa"}}>{clients.length}</div></div>
         <div className="stat"><div className="stat-label">RDV aujourd'hui</div><div className="stat-value" style={{color:"var(--success)"}}>{rdvAuj}</div><div style={{fontSize:"0.75rem",color:"var(--muted)"}}>{rdvAV} à venir</div></div>
-        <div className="stat"><div className="stat-label">CA ce mois</div><div className="stat-value">{money(caM)}</div></div>
-        <div className="stat"><div className="stat-label">À facturer</div><div className="stat-value" style={{color:imp>0?"var(--warning)":"var(--success)"}}>{imp}</div></div>
+        <div className="stat"><div className="stat-label">💰 Encaissé ce mois</div><div className="stat-value" style={{color:"var(--success)"}}>{money(encaisse)}</div></div>
+        <div className="stat"><div className="stat-label">⚠️ Impayés</div><div className="stat-value" style={{color:impayes.length>0?"var(--warning)":"var(--success)"}}>{impayes.length}</div></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div className="card"><div className="card-title">📅 RDV à venir</div>{rdvs.filter(r=>r.date>=auj).slice(0,5).map(r=>{const c=clients.find(x=>x.id===r.clientId);return(<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}><div><div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{r.type} · {fmt(r.date)} {r.heure}</div></div><span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":"warning"}`}>{r.statut}</span></div>);})}</div>
-        <div className="card"><div className="card-title">📄 Derniers documents</div>{docs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun document</div>}{docs.slice(-5).reverse().map(d=>{const c=clients.find(x=>x.id===d.clientId);return(<div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}><div><div style={{fontWeight:600,fontSize:"0.875rem"}}>{d.type} · {d.numero}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{c?.prenom} {c?.nom} · {fmt(d.date)}</div></div><span className="badge badge-success">{d.statut}</span></div>);})}</div>
+        <div className="card">
+          <div className="card-title">⚠️ Impayés</div>
+          {impayes.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun impayé 🎉</div>}
+          {impayes.slice(0,6).map(d=>{
+            const c=clients.find(x=>x.id===d.clientId);
+            return(<div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--border)"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div>
+                <div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{d.type} · {fmt(d.date)}</div>
+              </div>
+              <span className="badge badge-warning">Non payé</span>
+            </div>);
+          })}
+        </div>
       </div>
     </div>
   );
