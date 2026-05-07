@@ -600,7 +600,7 @@ function DocBon({doc, client, societe, onClose}) {
             <strong>{societe.nom}</strong>
             {societe.adresse}<br/>Tél : {societe.tel}<br/>{societe.email}<br/>SIRET : {societe.siret}
           </div>
-          <div><div className="a4-logo">🔥 {societe.nom}</div><div style={{fontSize:"6.5pt",color:"#888",textAlign:"right",marginTop:2}}>Chauffagiste certifié</div></div>
+          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:55,maxWidth:140,objectFit:"contain",display:"block"}}/>:<><div className="a4-logo">🔥 {societe.nom}</div><div style={{fontSize:"6.5pt",color:"#888",textAlign:"right",marginTop:2}}>Chauffagiste certifié</div></>}</div>
         </div>
         <div className="a4-title">BON D'INTERVENTION</div>
         <div className="a4-g2" style={{marginBottom:"3mm"}}>
@@ -733,7 +733,7 @@ function DocAttestation({doc, client, societe, onClose}) {
             <strong>{societe.nom}</strong>
             {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
           </div>
-          <div><div className="a4-logo">🔥 {societe.nom}</div></div>
+          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:55,maxWidth:140,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}</div>
         </div>
 
         <div className="a4-title">ATTESTATION D'ENTRETIEN — {typeLabel}</div>
@@ -1330,19 +1330,15 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
     </div></div>
   );
 }
-function PageDashboard({clients,rdvs,docs}) {
+function PageDashboard({clients,rdvs,docs,setDocs}) {
   const auj=todayStr();
   const moisCourant=auj.slice(0,7);
   const rdvAuj=rdvs.filter(r=>r.date===auj).length;
   const rdvAV=rdvs.filter(r=>r.date>=auj).length;
-
-  // Montant encaissé ce mois
   const encaisse=docs.filter(d=>d.montantEncaisse&&d.date?.slice(0,7)===moisCourant)
     .reduce((s,d)=>s+Number(d.montantEncaisse||0),0);
-
-  // Impayés = docs sans montant encaissé
   const impayes=docs.filter(d=>["Attestation Gaz","Attestation Fioul","Attestation Clim","Attestation PAC","Dépannage","Remplacement de pièces"].includes(d.type)&&!d.montantEncaisse);
-
+  const delDoc=id=>{if(confirm("Supprimer ce document ?"))setDocs(p=>p.filter(d=>d.id!==id));};
   return (
     <div className="content">
       <div className="stats-grid">
@@ -1359,11 +1355,14 @@ function PageDashboard({clients,rdvs,docs}) {
           {impayes.slice(0,6).map(d=>{
             const c=clients.find(x=>x.id===d.clientId);
             return(<div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--border)"}}>
-              <div>
+              <div style={{flex:1}}>
                 <div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div>
                 <div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{d.type} · {fmt(d.date)}</div>
               </div>
-              <span className="badge badge-warning">Non payé</span>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <span className="badge badge-warning">Non payé</span>
+                <button className="btn btn-danger btn-sm" onClick={()=>delDoc(d.id)}>🗑</button>
+              </div>
             </div>);
           })}
         </div>
@@ -1982,7 +1981,7 @@ export default function App() {
             <h2>{LABELS[page]}</h2>
             <div style={{fontSize:"0.8rem",color:"var(--muted)"}}>{societe.nom}</div>
           </div>
-          {page==="dashboard"&&<PageDashboard clients={clients} rdvs={rdvs} docs={docs}/>}
+          {page==="dashboard"&&<PageDashboard clients={clients} rdvs={rdvs} docs={docs} setDocs={setDocs}/>}
           {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue}/>}
           {page==="clients"&&<PageClients clients={clients} setClients={setClients} docs={docs} setDocs={setDocs} rdvs={rdvs} societe={societe}/>}
           {page==="devis"&&<PageDevisFactures clients={clients} docs={docs} setDocs={setDocs} devis={devis} setDevis={setDevis} societe={societe} catalogue={catalogue} setCatalogue={setCatalogue}/>}
