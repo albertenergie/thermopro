@@ -322,12 +322,13 @@ const genNumero = (type, docs, devis) => {
 };
 
 function sendMail(to, subject, body, cc) {
-  const params=new URLSearchParams();
-  if(to) params.set("to", to);
-  if(cc) params.set("cc", cc);
-  params.set("subject", subject);
-  params.set("body", body);
-  window.location.href=`mailto:?${params.toString()}`;
+  let url = `mailto:${encodeURIComponent(to||"")}`;
+  const params = [];
+  if(cc) params.push(`cc=${encodeURIComponent(cc)}`);
+  params.push(`subject=${encodeURIComponent(subject)}`);
+  params.push(`body=${encodeURIComponent(body)}`);
+  if(params.length) url += `?${params.join("&")}`;
+  window.location.href = url;
 }
 
 function SignaturePad({label, onSave, existingSig}) {
