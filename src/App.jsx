@@ -321,8 +321,13 @@ const genNumero = (type, docs, devis) => {
   return `FAC-${year}-${String(nb).padStart(3,"0")}`;
 };
 
-function sendMail(to, subject, body) {
-  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to||"")}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,"_blank");
+function sendMail(to, subject, body, cc) {
+  const params=new URLSearchParams();
+  if(to) params.set("to", to);
+  if(cc) params.set("cc", cc);
+  params.set("subject", subject);
+  params.set("body", body);
+  window.location.href=`mailto:?${params.toString()}`;
 }
 
 function SignaturePad({label, onSave, existingSig}) {
@@ -591,7 +596,7 @@ function DocBon({doc, client, societe, onClose}) {
     .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendMail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n${doc.observations||""}`)}>
+    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendMail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bonjour,\n\nVeuillez trouver ci-joint votre bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`,societe.email)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -724,7 +729,7 @@ function DocAttestation({doc, client, societe, onClose}) {
     .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 5px;font-size:6.5pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendMail(client?.email||"",`Attestation ${doc.numero} — ${societe.nom}`,`Attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.`)}>
+    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendMail(client?.email||"",`Attestation d'entretien ${doc.numero} — ${societe.nom}`,`Bonjour,\n\nVeuillez trouver ci-joint votre attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`,societe.email)}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -1161,6 +1166,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       }
     });
     if(hasFacturation&&docTab!=="aucun"&&docLignes.length>0) newDocs.push({type:docTab==="devis"?"Devis":"Facture",numero:`${docTab==="devis"?"DEV":"FAC"}-${f.numero}`,date:f.date,clientId:client.id,rdvId:rdv.id,objet:docObjet||rdv.type,statut:docTab==="devis"?"En attente":"En attente de règlement",lignes:docLignes,dateEcheance:f.date,modePaiement:"Chèque, Virement, Espèces, Carte bancaire",acompte:0,sigTech,sigClient});
+    if(f.devisDemande&&f.devisNote) newDocs.push({type:"Mémo devis",date:f.date,clientId:client.id,rdvId:rdv.id,note:f.devisNote,statut:"À faire"});
     onSave(newDocs);
   };
 
@@ -1317,6 +1323,13 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
             </div>
           </div>
         </div>
+        <div className="card" style={{marginBottom:16,borderColor:f.devisDemande?"#f97316":"var(--border)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:f.devisDemande?12:0}}>
+            <input type="checkbox" id="devis-cb" checked={!!f.devisDemande} onChange={e=>sv("devisDemande",e.target.checked)} style={{width:18,height:18,cursor:"pointer"}}/>
+            <label htmlFor="devis-cb" style={{fontWeight:600,cursor:"pointer",fontSize:"0.9rem"}}>📋 Devis demandé par le client</label>
+          </div>
+          {f.devisDemande&&<textarea value={f.devisNote||""} onChange={e=>sv("devisNote",e.target.value)} placeholder="Décrivez ce que le client souhaite..." style={{width:"100%",minHeight:60,marginTop:8}}/>}
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
           <div className="card"><div className="card-title">✍️ Technicien</div><SignaturePad label="Signez ici" onSave={setSigTech} existingSig={sigTech}/></div>
           <div className="card" style={{borderColor:"#3b82f640"}}><div className="card-title" style={{color:"#60a5fa"}}>✍️ Client</div><SignaturePad label="Signez ici" onSave={setSigClient} existingSig={sigClient}/></div>
@@ -1339,6 +1352,8 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
     .reduce((s,d)=>s+Number(d.montantEncaisse||0),0);
   const impayes=docs.filter(d=>["Attestation Gaz","Attestation Fioul","Attestation Clim","Attestation PAC","Dépannage","Remplacement de pièces"].includes(d.type)&&!d.montantEncaisse);
   const delDoc=id=>{if(confirm("Supprimer ce document ?"))setDocs(p=>p.filter(d=>d.id!==id));};
+  const devisAFaire=docs.filter(d=>d.type==="Mémo devis"&&d.statut==="À faire");
+  const delDevisAFaire=id=>{setDocs(p=>p.filter(d=>d.id!==id));};
   return (
     <div className="content">
       <div className="stats-grid">
@@ -1347,6 +1362,20 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
         <div className="stat"><div className="stat-label">💰 Encaissé ce mois</div><div className="stat-value" style={{color:"var(--success)"}}>{money(encaisse)}</div></div>
         <div className="stat"><div className="stat-label">⚠️ Impayés</div><div className="stat-value" style={{color:impayes.length>0?"var(--warning)":"var(--success)"}}>{impayes.length}</div></div>
       </div>
+      {devisAFaire.length>0&&<div className="card" style={{marginBottom:16,borderColor:"#f97316"}}>
+        <div className="card-title" style={{color:"#f97316"}}>📋 Devis à faire ({devisAFaire.length})</div>
+        {devisAFaire.map(d=>{
+          const c=clients.find(x=>x.id===d.clientId);
+          return(<div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--border)"}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div>
+              <div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:2}}>{d.note}</div>
+              <div style={{fontSize:"0.75rem",color:"var(--muted)"}}>{fmt(d.date)}</div>
+            </div>
+            <button className="btn btn-danger btn-sm" onClick={()=>delDevisAFaire(d.id)}>🗑</button>
+          </div>);
+        })}
+      </div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <div className="card"><div className="card-title">📅 RDV à venir</div>{rdvs.filter(r=>r.date>=auj).slice(0,5).map(r=>{const c=clients.find(x=>x.id===r.clientId);return(<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}><div><div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{r.type} · {fmt(r.date)} {r.heure}</div></div><span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":"warning"}`}>{r.statut}</span></div>);})}</div>
         <div className="card">
