@@ -1500,7 +1500,8 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
                   <div style={{flex:1,position:"relative",minHeight:64}}>
                     {dayRdvs.filter(r=>{const rh=r.heure?.split(":")[0];return rh===String(hi+7).padStart(2,"0");}).map(r=>{
                       const c=clients.find(x=>x.id===r.clientId);
-                      const rdvDocs=docs.filter(d=>d.rdvId===r.id);
+                      const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
+                      const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
                       const isRealise=r.statut==="Réalisé";
                       const isConfirme=r.statut==="Confirmé";
                       return (
@@ -1511,7 +1512,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
                               <div style={{fontSize:"0.82rem",color:"var(--muted)",marginTop:3}}>{r.type}</div>
                               <div style={{fontSize:"0.8rem",marginTop:3}}><AddrLink client={c} style={{fontSize:"0.8rem"}}/></div>
                               {c?.tel&&<div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:2}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
-                              {rdvDocs.length>0&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>👁 {d.type}</button>)}</div>}
+                              {isRealise&&rdvDocs.length>0&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>{docIcon(d.type)} {d.type}</button>)}</div>}
                             </div>
                             <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,alignItems:"flex-end"}}>
                               <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
@@ -1559,12 +1560,13 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
         {selRdvs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
         {selRdvs.map(r=>{
           const c=clients.find(x=>x.id===r.clientId);
-          const rdvDocs=docs.filter(d=>d.rdvId===r.id);
+          const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
+          const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
           return(<div key={r.id} className="rdv-row">
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
               <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{r.type} · <AddrLink client={c} style={{fontSize:"0.78rem"}}/></div>
-              {rdvDocs.length>0&&<div style={{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={e=>{e.stopPropagation();openPreview(d);}}>👁 {d.type}</button>)}</div>}
+              {r.statut==="Réalisé"&&rdvDocs.length>0&&<div style={{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={e=>{e.stopPropagation();openPreview(d);}}>{docIcon(d.type)} {d.type}</button>)}</div>}
             </div>
             <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center",flexWrap:"wrap"}}>
               <span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":r.statut==="Annulé"?"danger":"warning"}`}>{r.statut}</span>
