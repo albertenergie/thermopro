@@ -579,11 +579,9 @@ function DocBon({doc, client, societe, onClose}) {
   const equip=doc.equip||{};
   const CSS_A4=`
     .a4page{font-family:'DM Sans',sans-serif;font-size:8pt;color:#111;background:#fff;padding:11mm 13mm;max-width:210mm;margin:0 auto;}
-    .a4-header{margin-bottom:5mm;padding-bottom:3mm;border-bottom:2px solid #1a56db;}
-    .a4-header-logo{display:flex;justify-content:center;margin-bottom:3mm;}
-    .a4-header-infos{display:flex;justify-content:space-between;align-items:flex-start;}
+    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5mm;padding-bottom:3mm;border-bottom:2px solid #1a56db;}
     .a4-company{font-size:7pt;line-height:1.6;color:#333;}.a4-company strong{font-size:9.5pt;color:#111;display:block;}
-    .a4-logo{font-size:15pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:center;}
+    .a4-logo{font-size:15pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
     .a4-title{background:#1a56db;color:#fff;text-align:center;padding:3px 0;font-size:9.5pt;font-weight:700;letter-spacing:1px;margin-bottom:4mm;border-radius:3px;}
     .a4-sec{margin-bottom:3mm;}.a4-sec-t{font-size:7pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:2px;margin-bottom:2mm;}
     .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:3mm;}.a4-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:2mm;}
@@ -603,20 +601,11 @@ function DocBon({doc, client, societe, onClose}) {
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
-          <div className="a4-header-logo">
-            {societe.logo?<img src={societe.logo} alt="Logo" style={{height:70,maxWidth:180,objectFit:"contain"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}
+          <div className="a4-company">
+            <strong>{societe.nom}</strong>
+            {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
           </div>
-          <div className="a4-header-infos">
-            <div className="a4-company">
-              <strong>{societe.nom}</strong>
-              {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}
-            </div>
-            <div className="a4-company" style={{textAlign:"right"}}>
-              SIRET : {societe.siret}<br/>
-              {societe.tva&&`TVA : ${societe.tva}`}<br/>
-              {societe.rge&&`N° RGE : ${societe.rge}`}
-            </div>
-          </div>
+          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:80,maxWidth:160,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}</div>
         </div>
         <div className="a4-title">BON D'INTERVENTION</div>
         <div className="a4-g2" style={{marginBottom:"3mm"}}>
@@ -700,11 +689,9 @@ function DocAttestation({doc, client, societe, onClose}) {
   const typeLabel=isClim?"CLIMATISATION":isPac?"POMPE À CHALEUR":isFioul?"CHAUDIÈRE FIOUL":"CHAUDIÈRE GAZ";
   const CSS_A4=`
     .a4page{font-family:'DM Sans',sans-serif;font-size:7.5pt;color:#111;background:#fff;padding:8mm 10mm;max-width:210mm;margin:0 auto;}
-    .a4-header{margin-bottom:3mm;padding-bottom:2mm;border-bottom:2px solid #1a56db;}
-    .a4-header-logo{display:flex;justify-content:center;margin-bottom:2.5mm;}
-    .a4-header-infos{display:flex;justify-content:space-between;align-items:flex-start;}
+    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm;padding-bottom:2mm;border-bottom:2px solid #1a56db;}
     .a4-company{font-size:6.5pt;line-height:1.5;color:#333;}.a4-company strong{font-size:9pt;color:#111;display:block;}
-    .a4-logo{font-size:13pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:center;}
+    .a4-logo{font-size:13pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
     .a4-title{background:#1a56db;color:#fff;text-align:center;padding:2px 0;font-size:9pt;font-weight:700;letter-spacing:1px;margin-bottom:3mm;border-radius:3px;}
     .a4-sec{margin-bottom:2mm;}.a4-sec-t{font-size:6.5pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:1px;margin-bottom:1.5mm;}
     .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:2.5mm;}
@@ -746,20 +733,11 @@ function DocAttestation({doc, client, societe, onClose}) {
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
-          <div className="a4-header-logo">
-            {societe.logo?<img src={societe.logo} alt="Logo" style={{height:65,maxWidth:180,objectFit:"contain"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}
+          <div className="a4-company">
+            <strong>{societe.nom}</strong>
+            {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
           </div>
-          <div className="a4-header-infos">
-            <div className="a4-company">
-              <strong>{societe.nom}</strong>
-              {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}
-            </div>
-            <div className="a4-company" style={{textAlign:"right"}}>
-              SIRET : {societe.siret}<br/>
-              {societe.tva&&`TVA : ${societe.tva}`}<br/>
-              {societe.rge&&`N° RGE : ${societe.rge}`}
-            </div>
-          </div>
+          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:80,maxWidth:160,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}</div>
         </div>
 
         <div className="a4-title">ATTESTATION D'ENTRETIEN — {typeLabel}</div>
