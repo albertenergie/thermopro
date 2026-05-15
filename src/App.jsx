@@ -916,7 +916,11 @@ function EquipForm({equip, onChange, onDelete, index}) {
               <div className="form-group"><label>Modèle</label><input value={equip.modeleExt||""} onChange={e=>s("modeleExt",e.target.value)}/></div>
               <div className="form-group"><label>N° série</label><input value={equip.numSerieExt||""} onChange={e=>s("numSerieExt",e.target.value)}/></div>
               <div className="form-group"><label>Puissance (kW)</label><input value={equip.puissanceClim||""} onChange={e=>s("puissanceClim",e.target.value)}/></div>
-              <div className="form-group"><label>Fluide frigorigène (ex: R32, R410A)</label><input value={equip.fluideClim||""} onChange={e=>s("fluideClim",e.target.value)} placeholder="R32, R410A, R22..."/></div>||[{emplacement:"",modele:"",numSerie:"",puissance:""}]).map((ui,i)=>(
+              <div className="form-group"><label>Fluide frigorigène (ex: R32, R410A)</label><input value={equip.fluideClim||""} onChange={e=>s("fluideClim",e.target.value)} placeholder="R32, R410A, R22..."/></div>
+              <div className="form-group"><label>Année</label><input value={equip.anneeClim||""} onChange={e=>s("anneeClim",e.target.value)}/></div>
+            </div>
+          </div>
+          {(equip.unitesInt||[{emplacement:"",modele:"",numSerie:"",puissance:""}]).map((ui,i)=>(
             <div key={i} className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
               <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
               <div className="form-grid">
