@@ -1544,7 +1544,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
               <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{r.type} · <AddrLink client={c} style={{fontSize:"0.78rem"}}/></div>
-              {r.statut==="Réalisé"&&rdvDocs.length>0&&<div style={{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={e=>{e.stopPropagation();openPreview(d);}}>{docIcon(d.type)} {d.type}</button>)}</div>}
+              {r.statut==="Réalisé"&&rdvDocs.length>0&&null}
             </div>
             <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center",flexWrap:"wrap"}}>
               <span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":r.statut==="Annulé"?"danger":"warning"}`}>{r.statut}</span>
