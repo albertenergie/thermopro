@@ -851,16 +851,16 @@ function DocAttestation({doc, client, societe, onClose}) {
             {!isClim&&!isPac&&<div className="a4-sec">
               <div className="a4-sec-t">Mesures de combustion{isFioul?" & Brûleur":""}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.5mm",marginBottom:"1.5mm"}}>
-                <div className="a4-ci"><div className="cl">CO Amb.</div><div className="cv">{comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
-                <div className="a4-ci"><div className="cl">CO Fum.</div><div className="cv">{comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
-                <div className="a4-ci"><div className="cl">CO₂</div><div className="cv">{comb.co2||"—"}</div><div className="cu">%</div></div>
-                <div className="a4-ci"><div className="cl">O₂</div><div className="cv">{comb.o2||"—"}</div><div className="cu">%</div></div>
-                <div className="a4-ci"><div className="cl">T. fumées</div><div className="cv">{comb.tempFumees||"—"}</div><div className="cu">°C</div></div>
-                <div className="a4-ci"><div className="cl">Air comb.</div><div className="cv">{comb.tempAir||"—"}</div><div className="cu">°C</div></div>
-                <div className="a4-ci"><div className="cl">Rdt PCI</div><div className="cv">{comb.rendement||"—"}</div><div className="cu">%</div></div>
-                <div className="a4-ci"><div className="cl">NOx</div><div className="cv">{comb.nox||"—"}</div><div className="cu">mg/kWh</div></div>
-                {isFioul&&<><div className="a4-ci"><div className="cl">Gicleur</div><div className="cv">{comb.gicleur||equip.debitGicleur||"—"}</div><div className="cu">{equip.angleGicleur||""}</div></div>
-                <div className="a4-ci"><div className="cl">P. pompe</div><div className="cv">{comb.pressionPompe||"—"}</div><div className="cu">bar</div></div></>}
+                <div className="a4-ci"><div className="cl">CO Amb.</div><div className="cv">{doc.vierge?"":comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
+                <div className="a4-ci"><div className="cl">CO Fum.</div><div className="cv">{doc.vierge?"":comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
+                <div className="a4-ci"><div className="cl">CO₂</div><div className="cv">{doc.vierge?"":comb.co2||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">O₂</div><div className="cv">{doc.vierge?"":comb.o2||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">T. fumées</div><div className="cv">{doc.vierge?"":comb.tempFumees||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Air comb.</div><div className="cv">{doc.vierge?"":comb.tempAir||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Rdt PCI</div><div className="cv">{doc.vierge?"":comb.rendement||"—"}</div><div className="cu">%</div></div>
+                <div className="a4-ci"><div className="cl">NOx</div><div className="cv">{doc.vierge?"":comb.nox||"—"}</div><div className="cu">mg/kWh</div></div>
+                {isFioul&&<><div className="a4-ci"><div className="cl">Gicleur</div><div className="cv">{doc.vierge?"":comb.gicleur||equip.debitGicleur||"—"}</div><div className="cu">{equip.angleGicleur||""}</div></div>
+                <div className="a4-ci"><div className="cl">P. pompe</div><div className="cv">{doc.vierge?"":comb.pressionPompe||"—"}</div><div className="cu">bar</div></div></>}
               </div>
             </div>}
 
@@ -899,8 +899,8 @@ function DocAttestation({doc, client, societe, onClose}) {
               </table>
             </div>}
 
-            {/* NON-CONFORMITÉS dans colonne droite */}
-            <div className="a4-sec">
+            {/* NON-CONFORMITÉS dans colonne droite - masqué si vierge */}
+            {!doc.vierge&&<div className="a4-sec">
               <div className="a4-sec-t">Non-conformités éventuelles</div>
               <div className="a4-nonconf">
                 {nonConf.length>0
@@ -908,7 +908,7 @@ function DocAttestation({doc, client, societe, onClose}) {
                   : <><div className="a4-nonconf-t" style={{color:"#2e7d32"}}>✓ Aucune non-conformité détectée</div><div className="a4-nonconf-txt">L'installation est conforme aux exigences réglementaires en vigueur.</div></>
                 }
               </div>
-            </div>
+            </div>}
 
           </div>
         </div>
