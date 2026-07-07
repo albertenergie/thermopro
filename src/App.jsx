@@ -247,7 +247,24 @@ function getWeekDays(date){
   return Array.from({length:7},(_,i)=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return x;});
 }
 
-const CHECKS_GAZ = ["Étanchéité circuit gaz","Contrôle flamme / allumage","Nettoyage brûleur","Nettoyage échangeur","Contrôle pressostat","Vérification circulateur","Pression circuit hydraulique","Purge radiateurs","Vase d'expansion","Soupape de sécurité","Mesure combustion (CO, CO₂, O₂)","Contrôle tirage fumée","Conduit d'évacuation","Régulation / thermostat","Test sécurité générale","Nettoyage filtre","Raccords et joints","VMC si présente"];
+const CHECKS_GAZ = [
+  "Nettoyage corps de chauffe, brûleur, veilleuse, électrodes et extracteur (si présent)",
+  "Vérif. état conduit de raccordement des fumées",
+  "Vérif. fonctionnelle dispositifs de sécurité de l'appareil",
+  "Test d'étanchéité gaz et réglage du débit",
+  "Vérif. fonctionnelle circulateur de chauffage (si présent)",
+  "Vérif. et réglage organes de régulation (si présent)",
+  "VMC gaz : vérif. dispositif sécurité et conduit de raccordement",
+  "Vérif. dispositif anti-refoulement des fumées (si présent)",
+  "Chaudière avec ballon : vérif. anodes et accessoires fournis",
+  "Vérification et gonflage du vase d'expansion",
+  "Démontage et nettoyage du brûleur",
+  "Contrôle embouement du circuit hydraulique",
+  "Purge bulles d'air du circuit hydraulique",
+  "Contrôle de la pression du circuit hydraulique",
+  "Vérif. fonctionnement circulateur du circuit hydraulique",
+  "Evaluation bon dimensionnement chaudière par rapport aux besoins"
+];
 const CHECKS_FIOUL = ["Niveau fioul","Démontage et nettoyage gicleur","Nettoyage filtre pompe fioul","Nettoyage pot filtre (si présent)","Nettoyage chambre combustion","Contrôle pompe à fioul","Réglage électrode d'allumage","Vérification circulateur","Pression circuit hydraulique","Contrôle et réglage brûleur","Mesure combustion (CO, CO₂, indice fumée)","Contrôle tirage fumée","Conduit d'évacuation","Régulation / thermostat","Test sécurité générale","Vase d'expansion","Soupape de sécurité","Raccords et joints","Vérification cuve / circuit fioul"];
 const CHECKS_CLIM = ["Nettoyage filtres unité intérieure","Nettoyage évaporateur","Nettoyage condenseur unité extérieure","Nettoyage bac et évacuation condensats","Contrôle connexions électriques","Vérification télécommande / programmation","Test fonctionnement mode froid","Test fonctionnement mode chaud","Mesure température soufflage / reprise","Vérification étanchéité liaisons frigorifiques","Contrôle isolation liaisons frigorifiques","Test sécurités haute / basse pression","Contrôle fixations unités int. et ext.","Niveau sonore anormal","État général de l'installation","Désinfection / traitement antifongique"];
 
@@ -772,20 +789,59 @@ function DocAttestation({doc, client, societe, onClose}) {
           <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
             <div className="a4-sec">
               <div className="a4-sec-t">Points de vérification</div>
-              <div className="a4-checks">
-                {checkList.map((c,i)=>(
-                  <div key={i} className="a4-chk">
-                    <div className={`a4-chkbox${checks[i]==="ok"?" ok":checks[i]==="nok"?" nok":checks[i]==="na"?" na":""}`}>
-                      {checks[i]==="ok"?"✓":checks[i]==="nok"?"✗":checks[i]==="na"?"–":""}
+              {!isFioul&&!isClim&&!isPac?(
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.8pt"}}>
+                  <thead>
+                    <tr>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"left",fontWeight:600,fontSize:"5.5pt",width:"72%"}}>Point de contrôle</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>🚫</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>👎</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>👍</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkList.map((c,i)=>{
+                      const val=checks[i];
+                      const so=val==="na",nv=val==="nok",v=val==="ok";
+                      return(
+                        <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2===0?"#f7f9ff":"#fff"}}>
+                          <td style={{padding:"2px 4px",fontSize:"5.8pt",lineHeight:1.3,color:"#222"}}>{c}</td>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
+                              {so?"🚫":""}
+                            </div>
+                          </td>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
+                              {nv?"👎":""}
+                            </div>
+                          </td>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
+                              {v?"👍":""}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ):(
+                <div className="a4-checks">
+                  {checkList.map((c,i)=>(
+                    <div key={i} className="a4-chk">
+                      <div className={`a4-chkbox${checks[i]==="ok"?" ok":checks[i]==="nok"?" nok":checks[i]==="na"?" na":""}`}>
+                        {checks[i]==="ok"?"✓":checks[i]==="nok"?"✗":checks[i]==="na"?"–":""}
+                      </div>
+                      <span>{c}</span>
                     </div>
-                    <span>{c}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="a4-sec">
               <div className="a4-sec-t">Travaux réalisés & Observations</div>
-              <div className="a4-travaux">{doc.observations||""}</div>
+              <div className="a4-travaux" style={{minHeight:"8mm"}}>{doc.observations||""}</div>
             </div>
           </div>
 
@@ -1627,6 +1683,13 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
                   <div style={{fontWeight:700,fontSize:"0.85rem",marginBottom:8,color:"var(--accent)"}}>{EQUIP_ICON(e.type)} {e.type}</div>
                   {e.type==="Climatisation"&&<><div style={{fontSize:"0.78rem"}}>{e.marqueClim} — {e.typeClim}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{e.modele} · {e.puissanceClim} · {e.anneeClim}</div></>}
                   {(e.type==="Chaudière gaz"||e.type==="Chauffe-eau gaz"||e.type==="Chaudière fioul")&&<><div style={{fontSize:"0.78rem"}}>{e.marque} {e.modele}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{e.puissance} · {e.annee} · {e.conduit}</div>{e.numSerie&&<div style={{fontSize:"0.75rem",color:"var(--muted)"}}>N° {e.numSerie}</div>}{e.contrat&&<div style={{fontSize:"0.75rem",marginTop:4}}><span className="badge badge-info" style={{fontSize:"0.65rem"}}>{e.contrat}</span></div>}</>}
+                  {(e.type==="Chaudière gaz"||e.type==="Chaudière fioul"||e.type==="Climatisation"||e.type==="Pompe à chaleur")&&
+                    <button className="btn btn-secondary btn-sm" style={{marginTop:8,width:"100%"}} onClick={()=>{
+                      const attType=e.type==="Chaudière fioul"?"Attestation Fioul":e.type==="Climatisation"?"Attestation Clim":e.type==="Pompe à chaleur"?"Attestation PAC":"Attestation Gaz";
+                      const vierge={type:attType,numero:"VIERGE",date:new Date().toISOString().slice(0,10),clientId:detail.id,equip:e,checks:{},observations:"",combustion:{},nonConformites:[],vierge:true};
+                      setPreview({doc:vierge,client:detail});
+                    }}>🖨️ Attestation vierge</button>
+                  }
                 </div>
               ))}
             </div>
