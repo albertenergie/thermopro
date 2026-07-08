@@ -265,7 +265,32 @@ const CHECKS_GAZ = [
   "Vérif. fonctionnement circulateur du circuit hydraulique",
   "Evaluation bon dimensionnement chaudière par rapport aux besoins"
 ];
-const CHECKS_FIOUL = ["Niveau fioul","Démontage et nettoyage gicleur","Nettoyage filtre pompe fioul","Nettoyage pot filtre (si présent)","Nettoyage chambre combustion","Contrôle pompe à fioul","Réglage électrode d'allumage","Vérification circulateur","Pression circuit hydraulique","Contrôle et réglage brûleur","Mesure combustion (CO, CO₂, indice fumée)","Contrôle tirage fumée","Conduit d'évacuation","Régulation / thermostat","Test sécurité générale","Vase d'expansion","Soupape de sécurité","Raccords et joints","Vérification cuve / circuit fioul"];
+const CHECKS_FIOUL_OBLIG = [
+  "Nettoyage des corps de chauffe",
+  "Nettoyage du brûleur et démontage",
+  "Nettoyage filtre pompe fioul domestique",
+  "Nettoyage pré-filtre fioul (si présent)",
+  "Vérif. état, nature et géométrie conduit de raccordement",
+  "Vérif. fonctionnelle dispositifs sécurité chaudière et brûleur",
+  "Vérif. fonctionnelle circulateur de chauffage (si présent)",
+  "Vérification et gonflage du vase d'expansion",
+  "Contrôle embouement circuit hydraulique",
+  "Purge bulles d'air circuit hydraulique",
+  "Contrôle pression circuit hydraulique",
+  "Vérification fonctionnement circuit hydraulique",
+  "Vérification fonctionnement circulateur circuit hydraulique",
+  "Evaluation bon dimensionnement chaudière",
+  "Contrôle pression gonflage vases d'expansion avec regonflage",
+  "Vérif. présence système automatisation (bâtiments non résidentiels P>70kW)",
+  "Contrôle isolation réseaux distribution chaleur hors volume chauffé",
+  "Vérif. système régulation température de chauffage",
+  "Vérif. régulateur classes IV-VIII (UE 813/2013)"
+];
+const CHECKS_FIOUL_REC = [
+  "Vérif. et réglage organes de régulation (si présent)",
+  "Chaudière avec ballon : vérif. anodes et accessoires fournis"
+];
+const CHECKS_FIOUL = [...CHECKS_FIOUL_OBLIG, ...CHECKS_FIOUL_REC];
 const CHECKS_CLIM = ["Nettoyage filtres unité intérieure","Nettoyage évaporateur","Nettoyage condenseur unité extérieure","Nettoyage bac et évacuation condensats","Contrôle connexions électriques","Vérification télécommande / programmation","Test fonctionnement mode froid","Test fonctionnement mode chaud","Mesure température soufflage / reprise","Vérification étanchéité liaisons frigorifiques","Contrôle isolation liaisons frigorifiques","Test sécurités haute / basse pression","Contrôle fixations unités int. et ext.","Niveau sonore anormal","État général de l'installation","Désinfection / traitement antifongique"];
 
 const MARQUES_CHAUDIERE = ["Viessmann","Atlantic","Saunier Duval","De Dietrich","Bosch","Vaillant","Chaffoteaux","Elm Leblanc","Frisquet","Chappée","Remeha","Wolf","Autre"];
@@ -789,43 +814,65 @@ function DocAttestation({doc, client, societe, onClose}) {
           <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
             <div className="a4-sec">
               <div className="a4-sec-t">Points de vérification</div>
-              {!isFioul&&!isClim&&!isPac?(
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.8pt"}}>
+              {!isClim&&!isPac?(
+                <>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.6pt"}}>
                   <thead>
                     <tr>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"left",fontWeight:600,fontSize:"5.5pt",width:"72%"}}>Point de contrôle</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>🚫</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>👎</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 4px",textAlign:"center",fontWeight:600,fontSize:"5.5pt"}}>👍</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"left",fontWeight:600,fontSize:"5.3pt",width:"73%"}}>{isFioul?"Points obligatoires":"Point de contrôle"}</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>🚫</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>👎</th>
+                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>👍</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {checkList.map((c,i)=>{
+                    {(isFioul?CHECKS_FIOUL_OBLIG:checkList).map((c,i)=>{
                       const val=checks[i];
                       const so=val==="na",nv=val==="nok",v=val==="ok";
                       return(
                         <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2===0?"#f7f9ff":"#fff"}}>
-                          <td style={{padding:"2px 4px",fontSize:"5.8pt",lineHeight:1.3,color:"#222"}}>{c}</td>
-                          <td style={{textAlign:"center",padding:"2px"}}>
-                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
-                              {so?"🚫":""}
-                            </div>
+                          <td style={{padding:"1.8px 3px",fontSize:"5.6pt",lineHeight:1.25,color:"#222"}}>{c}</td>
+                          <td style={{textAlign:"center",padding:"1.5px"}}>
+                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{so?"🚫":""}</div>
                           </td>
-                          <td style={{textAlign:"center",padding:"2px"}}>
-                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
-                              {nv?"👎":""}
-                            </div>
+                          <td style={{textAlign:"center",padding:"1.5px"}}>
+                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{nv?"👎":""}</div>
                           </td>
-                          <td style={{textAlign:"center",padding:"2px"}}>
-                            <div style={{width:12,height:12,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:8}}>
-                              {v?"👍":""}
-                            </div>
+                          <td style={{textAlign:"center",padding:"1.5px"}}>
+                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{v?"👍":""}</div>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                {isFioul&&<>
+                  <div style={{fontSize:"5.8pt",fontWeight:700,color:"#888",textTransform:"uppercase",margin:"1.5mm 0 1mm"}}>Points recommandés</div>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.6pt"}}>
+                    <tbody>
+                      {CHECKS_FIOUL_REC.map((c,i)=>{
+                        const idx=CHECKS_FIOUL_OBLIG.length+i;
+                        const val=checks[idx];
+                        const so=val==="na",nv=val==="nok",v=val==="ok";
+                        return(
+                          <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2===0?"#f7f9ff":"#fff"}}>
+                            <td style={{padding:"1.8px 3px",fontSize:"5.6pt",lineHeight:1.25,color:"#222",width:"73%"}}>{c}</td>
+                            <td style={{textAlign:"center",padding:"1.5px"}}>
+                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{so?"🚫":""}</div>
+                            </td>
+                            <td style={{textAlign:"center",padding:"1.5px"}}>
+                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{nv?"👎":""}</div>
+                            </td>
+                            <td style={{textAlign:"center",padding:"1.5px"}}>
+                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{v?"👍":""}</div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>}
+                </>
               ):(
                 <div className="a4-checks">
                   {checkList.map((c,i)=>(
