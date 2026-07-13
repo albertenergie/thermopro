@@ -1033,49 +1033,23 @@ function ScannerOCR({onResult, onClose, equip}) {
 
   const analyzeImage=async(dataUrl)=>{
     setScanning(true); setResult(null); setProgress(0);
-    setStatus("Analyse en cours...");
+    setStatus("Lecture de la plaque...");
     try{
-      // Extraire base64
       const base64=dataUrl.split(",")[1];
       const mediaType=dataUrl.split(";")[0].split(":")[1];
-
       setProgress(30);
-      setStatus("Lecture de la plaque...");
-
-      const response=await fetch("https://api.anthropic.com/v1/messages",{
+      const response=await fetch("/api/scan",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          model:"claude-sonnet-4-6",
-          max_tokens:500,
-          messages:[{
-            role:"user",
-            content:[
-              {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
-              {type:"text",text:`Lis cette plaque signalétique d'appareil de chauffage ou climatisation et extrais les informations suivantes. Réponds UNIQUEMENT en JSON valide sans texte autour :
-{
-  "marque": "la marque de l'appareil",
-  "modele": "le modèle exact",
-  "numSerie": "le numéro de série",
-  "puissance": "la puissance en kW",
-  "fluide": "le fluide frigorigène si présent (R32, R410A etc) sinon vide"
-}
-Si une information n'est pas visible, mets une chaîne vide "".`}
-            ]
-          }]
-        })
+        body:JSON.stringify({image:base64,mediaType})
       });
-
       setProgress(80);
-      const data=await response.json();
-      const text=data.content?.[0]?.text||"{}";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed=await response.json();
+      if(parsed.error) throw new Error(parsed.error);
       setProgress(100);
       setStatus("Terminé !");
-      setResult({...parsed,rawText:text});
-    }catch(e){
-      alert("Erreur : "+e.message);
-    }
+      setResult({...parsed,rawText:JSON.stringify(parsed,null,2)});
+    }catch(e){ alert("Erreur : "+e.message); }
     setScanning(false);
   };
 
