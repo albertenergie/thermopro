@@ -793,8 +793,8 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Appareil</div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Marque / Modèle</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modelePac||""}</div></div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>N° Série</label><div className="v">{equip.numSerie||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Marque / Modèle</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>N° Série</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
             <div className="a4-g2" style={{gap:"2mm"}}>
               <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
               <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{equip.fluideClim||equip.fluidePac||equip.gaz||"—"}</div></div>
