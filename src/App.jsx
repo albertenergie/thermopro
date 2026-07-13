@@ -1031,60 +1031,112 @@ function ScannerOCR({onResult, onClose, equip}) {
     r.readAsDataURL(file);
   };
 
-  const loadTesseract=()=>new Promise(resolve=>{
-    if(window.Tesseract){resolve();return;}
-    const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js";
-    s.onload=resolve; document.head.appendChild(s);
-  });
-
   const analyzeImage=async(dataUrl)=>{
     setScanning(true); setResult(null); setProgress(0);
+    setStatus("Analyse en cours...");
     try{
-      await loadTesseract();
-      const res=await window.Tesseract.recognize(dataUrl,"fra+eng",{
-        logger:m=>{
-          if(m.status==="recognizing text"){ setProgress(Math.round(m.progress*100)); setStatus(`Analyse : ${Math.round(m.progress*100)}%`); }
-          else setStatus(m.status);
-        }
+      // Extraire base64
+      const base64=dataUrl.split(",")[1];
+      const mediaType=dataUrl.split(";")[0].split(":")[1];
+
+      setProgress(30);
+      setStatus("Lecture de la plaque...");
+
+      const response=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-6",
+          max_tokens:500,
+          messages:[{
+            role:"user",
+            content:[
+              {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
+              {type:"text",text:`Lis cette plaque signalétique d'appareil de chauffage ou climatisation et extrais les informations suivantes. Réponds UNIQUEMENT en JSON valide sans texte autour :
+{
+  "marque": "la marque de l'appareil",
+  "modele": "le modèle exact",
+  "numSerie": "le numéro de série",
+  "puissance": "la puissance en kW",
+  "fluide": "le fluide frigorigène si présent (R32, R410A etc) sinon vide"
+}
+Si une information n'est pas visible, mets une chaîne vide "".`}
+            ]
+          }]
+        })
       });
-      const parsed=parseText(res.data.text, equip?.type||"");
-      setResult(parsed);
-    }catch(e){ alert("Erreur OCR : "+e.message); }
+
+      setProgress(80);
+      const data=await response.json();
+      const text=data.content?.[0]?.text||"{}";
+      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      setProgress(100);
+      setStatus("Terminé !");
+      setResult({...parsed,rawText:text});
+    }catch(e){
+      alert("Erreur : "+e.message);
+    }
     setScanning(false);
   };
 
-  const MARQUES=["Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Chaffoteaux","Bosch","Bulex","Frisquet","Geminox","Ideal Standard","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova"];
+  const MARQUES=["Chaffoteaux","Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Bosch","Bulex","Frisquet","Geminox","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova","Remeha","Immergas","Unical","Chappée","Domusa"];
 
   const parseText=(text,type)=>{
     let marque="",modele="",numSerie="",puissance="",fluide="";
-    // Marque
-    for(const m of MARQUES){ if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; } }
-    // Fluide seulement pour clim/PAC
-    if(type==="Climatisation"||type==="Pompe à chaleur"){
-      const fm=text.match(/R\s*[-]?\s*(\d{2,3}[A-Za-z]*)/i);
-      if(fm) fluide=fm[0].replace(/\s/g,"");
+    const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+
+    // 1. MARQUE
+    for(const m of MARQUES){
+      if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; }
     }
-    // Puissance
-    const pm=text.match(/(\d+[.,]\d*)\s*k[Ww]/)||text.match(/(\d+)\s*k[Ww]/);
-    if(pm) puissance=pm[0].replace(/\s/g,"");
-    // Modèle — cherche après "Modèle"
-    const mlm=text.match(/[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{2,25})/);
-    if(mlm) modele=mlm[1].trim().split('\n')[0].trim().slice(0,30);
+
+    // 2. MODÈLE — cherche "MOD" ou "Modèle" ou "Model"
+    const modPatterns=[
+      /MOD\s+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]odel\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]odello\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+    ];
+    for(const p of modPatterns){
+      const m=text.match(p);
+      if(m){ modele=m[1].trim().split('\n')[0].trim().replace(/\s+/g,' ').slice(0,30); break; }
+    }
+    // Fallback — pattern alphanum classique type NECTRA TOP 2.23 FF
     if(!modele){
-      // Pattern modèle type "Luna Max 2.28CF" ou "SUZ-M71VA"
-      const mm=text.match(/[A-Z][a-z]+\s+[A-Z][a-z]+\s+\d+[.,]\d*[A-Z]*/)||text.match(/[A-Z]{2,5}[-_][A-Z0-9]{3,12}/g);
-      if(mm) modele=Array.isArray(mm)?mm[0]:mm;
+      const mm=text.match(/[A-Z]{3,}[\s\-][A-Z]{2,}[\s\-]?\d+[.,]?\d*[\s]?[A-Z]{0,4}/);
+      if(mm) modele=mm[0].trim().slice(0,30);
     }
-    // N° série — cherche après "Matr.N°" ou patterns
-    const sp=[
+
+    // 3. N° SÉRIE — cherche "N°", "Serial", "Matr", "S/N"
+    const seriePatterns=[
+      /[Nn][°º]\s*([A-Z0-9]{5,20}[-]?[A-Z0-9]{0,8})/,
+      /[Ss]\/?[Nn]\s*[:\s]*([A-Z0-9]{5,20})/,
       /[Mm]atr\.?\s*[Nn][°o]\s*[:\s]*([A-Z0-9]{5,20})/,
       /[Ss]er[ie]+[^:]*[:\s]+([A-Z0-9]{5,20})/,
-      /[Nn][°o]\s*[:\s]*([A-Z0-9]{6,20})/,
+      /\b(\d{9,15}[-]?\d{0,4})\b/,
       /\b([A-Z]\d{7,15})\b/,
-      /\b(B\d{7,10})\b/
     ];
-    for(const p of sp){ const m=text.match(p); if(m){ numSerie=(m[1]||m[0]).trim(); break; } }
+    for(const p of seriePatterns){
+      const m=text.match(p);
+      if(m){ numSerie=(m[1]||m[0]).trim(); break; }
+    }
+
+    // 4. PUISSANCE — cherche kW
+    const puissPatterns=[
+      /(\d+[.,]\d+)\s*k[Ww]/,
+      /(\d+)\s*k[Ww]/,
+    ];
+    for(const p of puissPatterns){
+      const m=text.match(p);
+      if(m){ puissance=m[0].replace(/\s/g,""); break; }
+    }
+
+    // 5. FLUIDE — seulement clim/PAC
+    if(type==="Climatisation"||type==="Pompe à chaleur"){
+      const fm=text.match(/R[-]?(\d{2,3}[A-Za-z]*)/i);
+      if(fm) fluide=fm[0].replace(/\s/g,"");
+    }
+
     return {marque,modele,numSerie,puissance,fluide,rawText:text};
   };
 
