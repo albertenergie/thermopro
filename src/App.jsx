@@ -992,7 +992,7 @@ function DocAttestation({doc, client, societe, onClose}) {
   );
 }
 
-function ScannerOCR({onResult, onClose}) {
+function ScannerOCR({onResult, onClose, equip}) {
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const [scanning,setScanning]=useState(false);
@@ -1048,25 +1048,43 @@ function ScannerOCR({onResult, onClose}) {
           else setStatus(m.status);
         }
       });
-      const parsed=parseText(res.data.text);
+      const parsed=parseText(res.data.text, equip?.type||"");
       setResult(parsed);
     }catch(e){ alert("Erreur OCR : "+e.message); }
     setScanning(false);
   };
 
-  const MARQUES=["Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Chappée","Chaffoteaux","Bosch","Bulex","Frisquet"];
+  const MARQUES=["Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Chaffoteaux","Bosch","Bulex","Frisquet","Geminox","Ideal Standard","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova"];
 
-  const parseText=text=>{
+  const parseText=(text,type)=>{
     let marque="",modele="",numSerie="",puissance="",fluide="";
+    // Marque
     for(const m of MARQUES){ if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; } }
-    const fluideMatch=text.match(/R\s*[-]?\s*(\d{2,3}[A-Za-z]*)/i);
-    if(fluideMatch) fluide=fluideMatch[0].replace(/\s/g,"");
-    const puissanceMatch=text.match(/(\d+[.,]\d*)\s*k[Ww]/);
-    if(puissanceMatch) puissance=puissanceMatch[0];
-    const modeleMatch=text.match(/[A-Z]{2,5}[-_]?[A-Z]{0,3}\d{2,5}[A-Z]{0,4}/g);
-    if(modeleMatch) for(const m of modeleMatch){ if(m.length>=5&&!MARQUES.some(mk=>mk.toUpperCase()===m)){ modele=m; break; } }
-    const seriePatterns=[/[Ss]er[ie]+[^:]*[:]\s*([A-Z0-9]{6,20})/,/[Nn][°o]\s*[Ss][Ee][Rr][^:]*[:]\s*([A-Z0-9]{6,20})/,/\b([A-Z0-9]{10,20})\b/];
-    for(const p of seriePatterns){ const m=text.match(p); if(m){ numSerie=m[1]||m[0]; break; } }
+    // Fluide seulement pour clim/PAC
+    if(type==="Climatisation"||type==="Pompe à chaleur"){
+      const fm=text.match(/R\s*[-]?\s*(\d{2,3}[A-Za-z]*)/i);
+      if(fm) fluide=fm[0].replace(/\s/g,"");
+    }
+    // Puissance
+    const pm=text.match(/(\d+[.,]\d*)\s*k[Ww]/)||text.match(/(\d+)\s*k[Ww]/);
+    if(pm) puissance=pm[0].replace(/\s/g,"");
+    // Modèle — cherche après "Modèle"
+    const mlm=text.match(/[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{2,25})/);
+    if(mlm) modele=mlm[1].trim().split('\n')[0].trim().slice(0,30);
+    if(!modele){
+      // Pattern modèle type "Luna Max 2.28CF" ou "SUZ-M71VA"
+      const mm=text.match(/[A-Z][a-z]+\s+[A-Z][a-z]+\s+\d+[.,]\d*[A-Z]*/)||text.match(/[A-Z]{2,5}[-_][A-Z0-9]{3,12}/g);
+      if(mm) modele=Array.isArray(mm)?mm[0]:mm;
+    }
+    // N° série — cherche après "Matr.N°" ou patterns
+    const sp=[
+      /[Mm]atr\.?\s*[Nn][°o]\s*[:\s]*([A-Z0-9]{5,20})/,
+      /[Ss]er[ie]+[^:]*[:\s]+([A-Z0-9]{5,20})/,
+      /[Nn][°o]\s*[:\s]*([A-Z0-9]{6,20})/,
+      /\b([A-Z]\d{7,15})\b/,
+      /\b(B\d{7,10})\b/
+    ];
+    for(const p of sp){ const m=text.match(p); if(m){ numSerie=(m[1]||m[0]).trim(); break; } }
     return {marque,modele,numSerie,puissance,fluide,rawText:text};
   };
 
@@ -1108,7 +1126,7 @@ function ScannerOCR({onResult, onClose}) {
         <div style={{background:"var(--success)20",border:"1px solid var(--success)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:"0.82rem",color:"var(--success)",fontWeight:600}}>
           ✓ Analyse terminée — vérifiez et corrigez si nécessaire
         </div>
-        {[["marque","Marque"],["modele","Modèle"],["numSerie","N° de série"],["puissance","Puissance"],["fluide","Fluide frigorigène"]].map(([k,l])=>(
+        {[["marque","Marque"],["modele","Modèle"],["numSerie","N° de série"],["puissance","Puissance"],...((equip?.type==="Climatisation"||equip?.type==="Pompe à chaleur")?[["fluide","Fluide frigorigène"]]:[] )].map(([k,l])=>(
           <div key={k} className="form-group" style={{marginBottom:10}}>
             <label>{l}</label>
             <input value={result[k]||""} onChange={e=>setResult(p=>({...p,[k]:e.target.value}))}
@@ -1145,7 +1163,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
 
   return (
     <>
-    {showScanner&&<ScannerOCR onResult={handleScanResult} onClose={()=>setShowScanner(false)}/>}
+    {showScanner&&<ScannerOCR equip={equip} onResult={handleScanResult} onClose={()=>setShowScanner(false)}/>}
     <div style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:"0.85rem",color:"var(--accent)"}}>{EQUIP_ICON(equip.type)} Équipement {index+1} — {equip.type}</div>
