@@ -793,8 +793,15 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Appareil</div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Marque / Modèle</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>N° Série</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Marque / Modèle ext.</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>N° Série ext.</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
+            {(equip.unitesInt||[]).length>0&&(equip.unitesInt||[]).map((ui,i)=>(
+              <div key={i} style={{marginTop:"1.5mm",paddingTop:"1.5mm",borderTop:"1px solid #eee"}}>
+                <div style={{fontSize:"5.5pt",color:"#1a56db",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
+                {ui.modele&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Modèle</label><div className="v">{ui.modele}</div></div>}
+                {ui.numSerie&&<div className="a4-f"><label>N° Série</label><div className="v">{ui.numSerie}</div></div>}
+              </div>
+            ))}
             <div className="a4-g2" style={{gap:"2mm"}}>
               <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
               <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{equip.fluideClim||equip.fluidePac||equip.gaz||"—"}</div></div>
