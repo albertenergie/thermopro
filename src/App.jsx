@@ -992,18 +992,167 @@ function DocAttestation({doc, client, societe, onClose}) {
   );
 }
 
+function ScannerOCR({onResult, onClose}) {
+  const videoRef=useRef(null);
+  const canvasRef=useRef(null);
+  const [scanning,setScanning]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [status,setStatus]=useState("");
+  const [preview,setPreview]=useState(null);
+  const [result,setResult]=useState(null);
+  const [cameraActive,setCameraActive]=useState(false);
+  const fileRef=useRef(null);
+
+  useEffect(()=>{
+    return ()=>{ if(videoRef.current?.srcObject) videoRef.current.srcObject.getTracks().forEach(t=>t.stop()); };
+  },[]);
+
+  const startCamera=async()=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1920},height:{ideal:1080}}});
+      videoRef.current.srcObject=stream;
+      setCameraActive(true);
+    }catch(e){ alert("Impossible d'accéder à la caméra : "+e.message); }
+  };
+
+  const capture=()=>{
+    const v=videoRef.current, c=canvasRef.current;
+    c.width=v.videoWidth; c.height=v.videoHeight;
+    c.getContext("2d").drawImage(v,0,0);
+    const dataUrl=c.toDataURL("image/jpeg",0.95);
+    setPreview(dataUrl);
+    analyzeImage(dataUrl);
+  };
+
+  const analyzeFile=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader();
+    r.onload=ev=>{ setPreview(ev.target.result); analyzeImage(ev.target.result); };
+    r.readAsDataURL(file);
+  };
+
+  const loadTesseract=()=>new Promise(resolve=>{
+    if(window.Tesseract){resolve();return;}
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js";
+    s.onload=resolve; document.head.appendChild(s);
+  });
+
+  const analyzeImage=async(dataUrl)=>{
+    setScanning(true); setResult(null); setProgress(0);
+    try{
+      await loadTesseract();
+      const res=await window.Tesseract.recognize(dataUrl,"fra+eng",{
+        logger:m=>{
+          if(m.status==="recognizing text"){ setProgress(Math.round(m.progress*100)); setStatus(`Analyse : ${Math.round(m.progress*100)}%`); }
+          else setStatus(m.status);
+        }
+      });
+      const parsed=parseText(res.data.text);
+      setResult(parsed);
+    }catch(e){ alert("Erreur OCR : "+e.message); }
+    setScanning(false);
+  };
+
+  const MARQUES=["Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Chappée","Chaffoteaux","Bosch","Bulex","Frisquet"];
+
+  const parseText=text=>{
+    let marque="",modele="",numSerie="",puissance="",fluide="";
+    for(const m of MARQUES){ if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; } }
+    const fluideMatch=text.match(/R\s*[-]?\s*(\d{2,3}[A-Za-z]*)/i);
+    if(fluideMatch) fluide=fluideMatch[0].replace(/\s/g,"");
+    const puissanceMatch=text.match(/(\d+[.,]\d*)\s*k[Ww]/);
+    if(puissanceMatch) puissance=puissanceMatch[0];
+    const modeleMatch=text.match(/[A-Z]{2,5}[-_]?[A-Z]{0,3}\d{2,5}[A-Z]{0,4}/g);
+    if(modeleMatch) for(const m of modeleMatch){ if(m.length>=5&&!MARQUES.some(mk=>mk.toUpperCase()===m)){ modele=m; break; } }
+    const seriePatterns=[/[Ss]er[ie]+[^:]*[:]\s*([A-Z0-9]{6,20})/,/[Nn][°o]\s*[Ss][Ee][Rr][^:]*[:]\s*([A-Z0-9]{6,20})/,/\b([A-Z0-9]{10,20})\b/];
+    for(const p of seriePatterns){ const m=text.match(p); if(m){ numSerie=m[1]||m[0]; break; } }
+    return {marque,modele,numSerie,puissance,fluide,rawText:text};
+  };
+
+  return(
+    <div className="modal-overlay"><div className="modal" style={{maxWidth:520}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div className="modal-title" style={{marginBottom:0}}>📷 Scanner la plaque</div>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+      </div>
+
+      {!result&&<>
+        <div style={{background:"var(--surface2)",borderRadius:12,overflow:"hidden",marginBottom:12,position:"relative",aspectRatio:"4/3"}}>
+          <video ref={videoRef} autoPlay playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+          <canvas ref={canvasRef} style={{display:"none"}}/>
+          {cameraActive&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+            <div style={{width:"75%",height:"55%",border:"2px solid var(--accent)",borderRadius:8,boxShadow:"0 0 0 9999px rgba(0,0,0,0.4)"}}/>
+          </div>}
+          {!cameraActive&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#000",color:"#888",fontSize:"0.85rem"}}>Caméra inactive</div>}
+        </div>
+
+        {scanning&&<div style={{marginBottom:12}}>
+          <div style={{fontSize:"0.8rem",color:"var(--muted)",textAlign:"center",marginBottom:6}}>{status}</div>
+          <div style={{height:6,background:"var(--surface2)",borderRadius:3,overflow:"hidden"}}>
+            <div style={{height:"100%",background:"var(--accent)",borderRadius:3,width:progress+"%",transition:"width .3s"}}/>
+          </div>
+        </div>}
+
+        {preview&&!scanning&&<img src={preview} style={{width:"100%",borderRadius:8,marginBottom:12,maxHeight:180,objectFit:"cover"}}/>}
+
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {!cameraActive&&<button className="btn btn-primary" onClick={startCamera}>📷 Démarrer la caméra</button>}
+          {cameraActive&&<button className="btn btn-primary" onClick={capture} disabled={scanning}>📸 Capturer et analyser</button>}
+          <button className="btn btn-secondary" onClick={()=>fileRef.current?.click()} disabled={scanning}>🖼️ Choisir une photo</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={analyzeFile}/>
+        </div>
+      </>}
+
+      {result&&<>
+        <div style={{background:"var(--success)20",border:"1px solid var(--success)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:"0.82rem",color:"var(--success)",fontWeight:600}}>
+          ✓ Analyse terminée — vérifiez et corrigez si nécessaire
+        </div>
+        {[["marque","Marque"],["modele","Modèle"],["numSerie","N° de série"],["puissance","Puissance"],["fluide","Fluide frigorigène"]].map(([k,l])=>(
+          <div key={k} className="form-group" style={{marginBottom:10}}>
+            <label>{l}</label>
+            <input value={result[k]||""} onChange={e=>setResult(p=>({...p,[k]:e.target.value}))}
+              style={{borderColor:result[k]?"var(--success)":"var(--border)"}}/>
+          </div>
+        ))}
+        <details style={{marginBottom:14}}><summary style={{fontSize:"0.75rem",color:"var(--muted)",cursor:"pointer"}}>Texte brut détecté</summary>
+          <div style={{background:"var(--surface2)",borderRadius:8,padding:10,fontSize:"0.68rem",color:"var(--muted)",fontFamily:"monospace",whiteSpace:"pre-wrap",maxHeight:100,overflowY:"auto",marginTop:6}}>{result.rawText}</div>
+        </details>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn btn-secondary" onClick={()=>setResult(null)}>📷 Nouveau scan</button>
+          <button className="btn btn-primary" style={{flex:1}} onClick={()=>onResult(result)}>✓ Utiliser ces données</button>
+        </div>
+      </>}
+    </div></div>
+  );
+}
+
 function EquipForm({equip, onChange, onDelete, index}) {
   const s=(k,v)=>onChange({...equip,[k]:v});
+  const [showScanner,setShowScanner]=useState(false);
   const isClim=equip.type==="Climatisation";
   const isPac=equip.type==="Pompe à chaleur";
   const isFioul=equip.type==="Chaudière fioul";
   const isGaz=equip.type==="Chaudière gaz"||equip.type==="Chauffe-eau gaz";
   const isChaud=isGaz||isFioul;
+
+  const handleScanResult=res=>{
+    setShowScanner(false);
+    if(isClim){ onChange({...equip,marqueClim:res.marque||equip.marqueClim,modeleExt:res.modele||equip.modeleExt,numSerieExt:res.numSerie||equip.numSerieExt,puissanceClim:res.puissance||equip.puissanceClim,fluideClim:res.fluide||equip.fluideClim}); }
+    else if(isPac){ onChange({...equip,marquePac:res.marque||equip.marquePac,modelePac:res.modele||equip.modelePac,numSeriePac:res.numSerie||equip.numSeriePac,puissancePac:res.puissance||equip.puissancePac}); }
+    else{ onChange({...equip,marque:res.marque||equip.marque,modele:res.modele||equip.modele,numSerie:res.numSerie||equip.numSerie,puissance:res.puissance||equip.puissance}); }
+  };
+
   return (
+    <>
+    {showScanner&&<ScannerOCR onResult={handleScanResult} onClose={()=>setShowScanner(false)}/>}
     <div style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:"0.85rem",color:"var(--accent)"}}>{EQUIP_ICON(equip.type)} Équipement {index+1} — {equip.type}</div>
-        <button className="btn btn-danger btn-sm" onClick={onDelete}>🗑️ Supprimer</button>
+        <div style={{display:"flex",gap:6}}>
+          <button className="btn btn-secondary btn-sm" onClick={()=>setShowScanner(true)}>📷 Scanner</button>
+          <button className="btn btn-danger btn-sm" onClick={onDelete}>🗑️</button>
+        </div>
       </div>
       <div className="form-grid">
         <div className="form-group full"><label>Type</label><select value={equip.type} onChange={e=>onChange({...equip,type:e.target.value})}>{TYPES_EQUIP.map(t=><option key={t}>{t}</option>)}</select></div>
@@ -1072,6 +1221,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
         <div className="form-group full"><label>Notes</label><textarea value={equip.notes||""} onChange={e=>s("notes",e.target.value)} style={{minHeight:44}}/></div>
       </div>
     </div>
+    </>
   );
 }
 
