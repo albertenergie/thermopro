@@ -40,7 +40,7 @@ Si une information n'est pas visible, mets une chaîne vide "".`
 
     const data = await response.json();
 
-    // NOUVEAU : détecter une erreur API et la remonter clairement
+    // Détecte une erreur API et la remonte clairement au lieu de l'avaler silencieusement
     if (!response.ok || data.type === 'error') {
       console.error('Erreur API Anthropic:', JSON.stringify(data));
       return res.status(response.status || 500).json({
