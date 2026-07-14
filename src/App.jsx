@@ -710,7 +710,8 @@ function DocBon({doc, client, societe, onClose}) {
           <div className="a4-sig-box">
             <div className="a4-sig-label">Signature et cachet du client</div>
             {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:50,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
-            <div className="a4-sig-line">Bon pour accord</div>
+            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
+            <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
         <div className="a4-footer">{societe.nom} — SIRET {societe.siret} — APE 4322B — {societe.tel} — {societe.email}</div>
@@ -1017,9 +1018,13 @@ function ScannerOCR({onResult, onClose, equip}) {
 
   const capture=()=>{
     const v=videoRef.current, c=canvasRef.current;
+    if(!v || !c || !v.videoWidth || !v.videoHeight){
+      alert("La caméra n'est pas encore prête, réessayez dans 1 seconde.");
+      return;
+    }
     c.width=v.videoWidth; c.height=v.videoHeight;
     c.getContext("2d").drawImage(v,0,0);
-    const dataUrl=c.toDataURL("image/jpeg",0.95);
+    const dataUrl=c.toDataURL("image/jpeg",0.85);
     setPreview(dataUrl);
     analyzeImage(dataUrl);
   };
@@ -1035,8 +1040,11 @@ function ScannerOCR({onResult, onClose, equip}) {
     setScanning(true); setResult(null); setProgress(0);
     setStatus("Lecture de la plaque...");
     try{
+      if(!dataUrl || typeof dataUrl!=="string" || !dataUrl.includes(",")){
+        throw new Error("Image invalide, réessayez la capture.");
+      }
       const base64=dataUrl.split(",")[1];
-      const mediaType=dataUrl.split(";")[0].split(":")[1];
+      const mediaType=dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
       setProgress(30);
       const response=await fetch("/api/scan",{
         method:"POST",
@@ -1044,74 +1052,21 @@ function ScannerOCR({onResult, onClose, equip}) {
         body:JSON.stringify({image:base64,mediaType})
       });
       setProgress(80);
+      if(!response.ok){
+        let errText="";
+        try{ errText=await response.text(); }catch(_){ errText=""; }
+        throw new Error(`Erreur serveur (${response.status}) : ${errText.slice(0,200)}`);
+      }
       const parsed=await response.json();
       if(parsed.error) throw new Error(parsed.error);
       setProgress(100);
       setStatus("Terminé !");
       setResult({...parsed,rawText:JSON.stringify(parsed,null,2)});
-    }catch(e){ alert("Erreur : "+e.message); }
+    }catch(e){
+      console.error("Erreur scan complet:", e);
+      alert("Erreur : "+(e.message||"inconnue"));
+    }
     setScanning(false);
-  };
-
-  const MARQUES=["Chaffoteaux","Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Bosch","Bulex","Frisquet","Geminox","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova","Remeha","Immergas","Unical","Chappée","Domusa"];
-
-  const parseText=(text,type)=>{
-    let marque="",modele="",numSerie="",puissance="",fluide="";
-    const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
-
-    // 1. MARQUE
-    for(const m of MARQUES){
-      if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; }
-    }
-
-    // 2. MODÈLE — cherche "MOD" ou "Modèle" ou "Model"
-    const modPatterns=[
-      /MOD\s+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]odel\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]odello\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-    ];
-    for(const p of modPatterns){
-      const m=text.match(p);
-      if(m){ modele=m[1].trim().split('\n')[0].trim().replace(/\s+/g,' ').slice(0,30); break; }
-    }
-    // Fallback — pattern alphanum classique type NECTRA TOP 2.23 FF
-    if(!modele){
-      const mm=text.match(/[A-Z]{3,}[\s\-][A-Z]{2,}[\s\-]?\d+[.,]?\d*[\s]?[A-Z]{0,4}/);
-      if(mm) modele=mm[0].trim().slice(0,30);
-    }
-
-    // 3. N° SÉRIE — cherche "N°", "Serial", "Matr", "S/N"
-    const seriePatterns=[
-      /[Nn][°º]\s*([A-Z0-9]{5,20}[-]?[A-Z0-9]{0,8})/,
-      /[Ss]\/?[Nn]\s*[:\s]*([A-Z0-9]{5,20})/,
-      /[Mm]atr\.?\s*[Nn][°o]\s*[:\s]*([A-Z0-9]{5,20})/,
-      /[Ss]er[ie]+[^:]*[:\s]+([A-Z0-9]{5,20})/,
-      /\b(\d{9,15}[-]?\d{0,4})\b/,
-      /\b([A-Z]\d{7,15})\b/,
-    ];
-    for(const p of seriePatterns){
-      const m=text.match(p);
-      if(m){ numSerie=(m[1]||m[0]).trim(); break; }
-    }
-
-    // 4. PUISSANCE — cherche kW
-    const puissPatterns=[
-      /(\d+[.,]\d+)\s*k[Ww]/,
-      /(\d+)\s*k[Ww]/,
-    ];
-    for(const p of puissPatterns){
-      const m=text.match(p);
-      if(m){ puissance=m[0].replace(/\s/g,""); break; }
-    }
-
-    // 5. FLUIDE — seulement clim/PAC
-    if(type==="Climatisation"||type==="Pompe à chaleur"){
-      const fm=text.match(/R[-]?(\d{2,3}[A-Za-z]*)/i);
-      if(fm) fluide=fm[0].replace(/\s/g,"");
-    }
-
-    return {marque,modele,numSerie,puissance,fluide,rawText:text};
   };
 
   return(
