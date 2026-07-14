@@ -1678,7 +1678,40 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
   );
 }
 
-function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe}) {
+function ModalBlocPerso({bloc, onSave, onDelete, onClose}) {
+  const [f,setF]=useState(bloc||{titre:"",type:"Perso",mode:"heure",date:todayStr(),dateFin:todayStr(),heureDebut:"09:00",duree:1});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  return (
+    <div className="modal-overlay"><div className="modal">
+      <div className="modal-title">{bloc?"Modifier le bloc":"Nouveau bloc perso"}</div>
+      <div className="form-grid">
+        <div className="form-group full"><label>Titre</label><input value={f.titre} onChange={e=>s("titre",e.target.value)} placeholder="Ex : RDV dentiste, Vacances Bretagne..."/></div>
+        <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Perso</option><option>Vacances</option></select></div>
+        <div className="form-group"><label>Durée</label><select value={f.mode} onChange={e=>s("mode",e.target.value)}>
+          <option value="heure">Heure précise</option>
+          <option value="apresmidi">Après-midi</option>
+          <option value="journee">Journée entière</option>
+          <option value="plage">Plage de dates</option>
+        </select></div>
+        {f.mode==="plage"?<>
+          <div className="form-group"><label>Du</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
+          <div className="form-group"><label>Au</label><input type="date" value={f.dateFin} onChange={e=>s("dateFin",e.target.value)}/></div>
+        </>:<div className="form-group full"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>}
+        {f.mode==="heure"&&<>
+          <div className="form-group"><label>Heure de début</label><input type="time" value={f.heureDebut} onChange={e=>s("heureDebut",e.target.value)}/></div>
+          <div className="form-group"><label>Durée (heures)</label><input type="number" min="0.5" step="0.5" value={f.duree} onChange={e=>s("duree",e.target.value)}/></div>
+        </>}
+      </div>
+      <div className="form-actions">
+        {bloc&&<button className="btn btn-danger" onClick={onDelete} style={{marginRight:"auto"}}>🗑 Supprimer</button>}
+        <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+        <button className="btn btn-primary" onClick={()=>onSave(f)} disabled={!f.titre||!f.date}>Enregistrer</button>
+      </div>
+    </div></div>
+  );
+}
+
+function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, blocsPerso, setBlocsPerso}) {
   const [viewMode,setViewMode]=useState("jour");
   const [year,setYear]=useState(TODAY.getFullYear());
   const [month,setMonth]=useState(TODAY.getMonth());
@@ -1686,6 +1719,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
   const [dayDate,setDayDate]=useState(new Date(TODAY));
   const [selected,setSelected]=useState(todayStr());
   const [modalRdv,setModalRdv]=useState(null);
+  const [modalBloc,setModalBloc]=useState(null);
   const [wizard,setWizard]=useState(null);
   const [preview,setPreview]=useState(null);
   const days=getDays(year,month);
@@ -1708,9 +1742,26 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
   const isAtt=t=>t?.startsWith("Attestation");
   const heureToPx=h=>{const [hh,mm]=h.split(":").map(Number);return((hh-7)*60+mm)/60*52;};
   const weekLabel=()=>{const first=weekDays[0],last=weekDays[6];return `${first.getDate()} – ${last.getDate()} ${MOIS[last.getMonth()]} ${last.getFullYear()}`;};
+  const isBlocOnDay=(b,dateStr)=>b.mode==="plage"?(dateStr>=b.date&&dateStr<=(b.dateFin||b.date)):b.date===dateStr;
+  const blocsDay=dateStr=>blocsPerso.filter(b=>isBlocOnDay(b,dateStr));
+  const blocIcon=b=>b.type==="Vacances"?"🌴":"📌";
+  const blocLabel=b=>{
+    if(b.mode==="heure")return `${b.heureDebut} · ${b.titre}`;
+    if(b.mode==="apresmidi")return `Après-midi · ${b.titre}`;
+    if(b.mode==="plage")return `${b.titre} (jusqu'au ${fmt(b.dateFin)})`;
+    return b.titre;
+  };
+  const blocHourMatch=(b,hi)=>{
+    if(b.mode==="heure"){const [hh]=b.heureDebut.split(":").map(Number);return hh===hi+7;}
+    if(b.mode==="apresmidi")return hi+7===14;
+    return false;
+  };
+  const saveBloc=f=>{if(modalBloc.mode==="new")setBlocsPerso(p=>[...p,{...f,id:newId(p)}]);else setBlocsPerso(p=>p.map(b=>b.id===modalBloc.bloc.id?{...f,id:b.id}:b));setModalBloc(null);};
+  const delBloc=()=>{if(confirm("Supprimer ce bloc ?"))setBlocsPerso(p=>p.filter(b=>b.id!==modalBloc.bloc.id));setModalBloc(null);};
   return (
     <div className="content">
       {modalRdv&&<ModalRdv rdv={modalRdv.rdv} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
+      {modalBloc&&<ModalBlocPerso bloc={modalBloc.bloc} onSave={saveBloc} onDelete={delBloc} onClose={()=>setModalBloc(null)}/>}
       {wizard&&<WizardAgenda rdv={wizard.rdv} client={wizard.client} docs={docs} catalogue={catalogue} onSave={saveIntervention} onClose={()=>setWizard(null)}/>}
       {preview&&isAtt(preview.doc.type)&&<DocAttestation doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
       {preview&&!isAtt(preview.doc.type)&&<DocBon doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
@@ -1738,7 +1789,10 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
             <button className="btn btn-ghost btn-sm" onClick={nextWeek}>›</button>
           </div>}
         </div>
-        <button className="btn btn-primary" onClick={()=>setModalRdv({mode:"new"})}>+ Nouveau RDV</button>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn btn-secondary" onClick={()=>setModalBloc({mode:"new"})}>+ Bloc perso</button>
+          <button className="btn btn-primary" onClick={()=>setModalRdv({mode:"new"})}>+ Nouveau RDV</button>
+        </div>
       </div>
 
       {viewMode==="jour"&&(()=>{
@@ -1753,11 +1807,23 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
               <div><span style={{fontWeight:700,fontSize:"1rem"}}>{dayRdvs.length} RDV</span><span style={{color:"var(--muted)",fontSize:"0.85rem",marginLeft:10}}>{dayRdvs.filter(r=>r.statut==="Réalisé").length} réalisé(s)</span></div>
               {isToday&&<span className="badge badge-accent">Aujourd'hui</span>}
             </div>
+            {blocsDay(dayStr).filter(b=>b.mode==="journee"||b.mode==="plage").map(b=>(
+              <div key={b.id} onClick={()=>setModalBloc({mode:"edit",bloc:b})} style={{background:"#a855f715",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"10px 14px",marginBottom:10,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontWeight:600,fontSize:"0.88rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
+                <span className="badge" style={{background:"#a855f720",color:"#a855f7"}}>{b.type}</span>
+              </div>
+            ))}
             <div style={{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",overflow:"hidden"}}>
               {HOURS.map((h,hi)=>(
                 <div key={h} style={{display:"flex",borderBottom:"1px solid var(--border)",minHeight:64,position:"relative"}}>
                   <div style={{width:52,flexShrink:0,padding:"4px 8px",fontSize:"0.7rem",color:"var(--muted)",fontWeight:600,borderRight:"1px solid var(--border)",background:"var(--surface2)",paddingTop:6}}>{h}</div>
                   <div style={{flex:1,position:"relative",minHeight:64}}>
+                    {blocsDay(dayStr).filter(b=>blocHourMatch(b,hi)).map(b=>(
+                      <div key={b.id} onClick={()=>setModalBloc({mode:"edit",bloc:b})} style={{margin:"4px 8px",background:"#a855f715",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>
+                        <div style={{fontWeight:700,fontSize:"0.9rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
+                        <span className="badge" style={{background:"#a855f720",color:"#a855f7",marginTop:4,display:"inline-block"}}>{b.type}</span>
+                      </div>
+                    ))}
                     {dayRdvs.filter(r=>{const rh=r.heure?.split(":")[0];return rh===String(hi+7).padStart(2,"0");}).map(r=>{
                       const c=clients.find(x=>x.id===r.clientId);
                       const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
@@ -1799,7 +1865,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
       {viewMode==="mois"&&<>
         <div className="cal-header">{JOURS_FULL.map(j=><span key={j}>{j}</span>)}</div>
         <div className="cal-grid">
-          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?.nom}</div>;})}</div>);})}
+          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{blocsDay(dStr).map(b=><div key={b.id} className="cal-chip" style={{background:"#a855f720",color:"#a855f7"}}>{blocIcon(b)} {b.titre}</div>)}{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?.nom}</div>;})}</div>);})}
         </div>
       </>}
 
@@ -1808,7 +1874,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
           <div className="week-header" style={{background:"var(--surface2)",borderRight:"1px solid var(--border)"}}></div>
           {weekDays.map((d,i)=>{const dStr=ds(d),isT=dStr===todStr;return(<div key={i} className="week-header"><div className="week-header-day">{JOURS_FULL[i]}</div><div className={`week-header-date${isT?" today-c":""}`}>{d.getDate()}</div></div>);})}
           <div className="week-time-col">{HOURS.map(h=><div key={h} className="week-time-slot">{h}</div>)}</div>
-          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{HOURS.map(h=><div key={h} className="week-slot"/>)}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?.nom}</div></div>);})}</div>);})}
+          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);const dayBlocs=blocsDay(dStr);const allDayBlocs=dayBlocs.filter(b=>b.mode==="journee"||b.mode==="plage");const timedBlocs=dayBlocs.filter(b=>b.mode==="heure"||b.mode==="apresmidi");return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{allDayBlocs.length>0&&<div style={{position:"absolute",top:0,left:0,right:0,zIndex:5,padding:"2px 3px"}}>{allDayBlocs.map(b=><div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{background:"#a855f730",border:"1px solid #a855f7",borderRadius:4,padding:"2px 4px",fontSize:"0.62rem",marginBottom:2,cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{blocIcon(b)} {b.titre}</div>)}</div>}{HOURS.map(h=><div key={h} className="week-slot"/>)}{timedBlocs.map(b=>{const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;const top=heureToPx(startH);return(<div key={b.id} className="week-event" style={{top:top+1,background:"#a855f725",borderLeftColor:"#a855f7"}} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}}><div style={{fontWeight:700}}>{blocIcon(b)} {startH}</div><div>{b.titre}</div></div>);})}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?.nom}</div></div>);})}</div>);})}
         </div>
       </div>}
 
@@ -1817,7 +1883,18 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
           <div style={{fontFamily:"var(--font-head)",fontWeight:600,fontSize:"1rem"}}>📅 {fmt(selected)}</div>
           <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"new"})}>+ RDV</button>
         </div>
-        {selRdvs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
+        {selRdvs.length===0&&blocsDay(selected).length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
+        {blocsDay(selected).map(b=>(
+          <div key={b.id} className="rdv-row" style={{borderColor:"#a855f740"}} onClick={()=>setModalBloc({mode:"edit",bloc:b})}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:"0.9rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
+              <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{b.type}</div>
+            </div>
+            <div style={{display:"flex",gap:7,flexShrink:0}}>
+              <button className="btn btn-danger btn-sm" onClick={e=>{e.stopPropagation();if(confirm("Supprimer ce bloc ?"))setBlocsPerso(p=>p.filter(x=>x.id!==b.id));}}>🗑️</button>
+            </div>
+          </div>
+        ))}
         {selRdvs.map(r=>{
           const c=clients.find(x=>x.id===r.clientId);
           const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
@@ -2243,6 +2320,7 @@ export default function App() {
   const [devis,setDevis]=useState([]);
   const [catalogue,setCatalogue]=useState(INIT_CATALOGUE);
   const [societe,setSociete]=useState(INIT_SOCIETE);
+  const [blocsPerso,setBlocsPerso]=useState([]);
   const [loaded,setLoaded]=useState(false);
 
   // Chargement initial Firebase
@@ -2254,6 +2332,7 @@ export default function App() {
       const dv=await charger("devis"); if(dv) setDevis(dv);
       const s=await charger("societe"); if(s) setSociete(s);
       const cat=await charger("catalogue"); if(cat) setCatalogue(cat);
+      const bp=await charger("blocsPerso"); if(bp) setBlocsPerso(bp);
       setLoaded(true);
     };
     load();
@@ -2266,6 +2345,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) sauvegarder("devis",devis); },[devis]);
   useEffect(()=>{ if(loaded) sauvegarder("societe",societe); },[societe]);
   useEffect(()=>{ if(loaded) sauvegarder("catalogue",catalogue); },[catalogue]);
+  useEffect(()=>{ if(loaded) sauvegarder("blocsPerso",blocsPerso); },[blocsPerso]);
 
   if(!loggedIn) return <><style>{CSS}</style><LoginScreen onLogin={()=>setLoggedIn(true)}/></>;
 
@@ -2298,12 +2378,12 @@ export default function App() {
             <div style={{fontSize:"0.8rem",color:"var(--muted)"}}>{societe.nom}</div>
           </div>
           {page==="dashboard"&&<PageDashboard clients={clients} rdvs={rdvs} docs={docs} setDocs={setDocs}/>}
-          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue} societe={societe}/>}
+          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue} societe={societe} blocsPerso={blocsPerso} setBlocsPerso={setBlocsPerso}/>}
           {page==="clients"&&<PageClients clients={clients} setClients={setClients} docs={docs} setDocs={setDocs} rdvs={rdvs} societe={societe}/>}
           {page==="devis"&&<PageDevisFactures clients={clients} docs={docs} setDocs={setDocs} devis={devis} setDevis={setDevis} societe={societe} catalogue={catalogue} setCatalogue={setCatalogue}/>}
           {page==="relances"&&<PageRelances clients={clients} docs={docs} rdvs={rdvs} setRdvs={setRdvs}/>}
           {page==="documents"&&<PageDocuments docs={docs} setDocs={setDocs} clients={clients} societe={societe}/>}
-          {page==="settings"&&<PageSettings societe={societe} setSociete={setSociete} allData={{clients,rdvs,docs,devis,catalogue,societe}} onImport={data=>{if(data.clients)setClients(data.clients);if(data.rdvs)setRdvs(data.rdvs);if(data.docs)setDocs(data.docs);if(data.devis)setDevis(data.devis);if(data.catalogue)setCatalogue(data.catalogue);if(data.societe)setSociete(data.societe);alert("✓ Sauvegarde importée avec succès !");}}/>}
+          {page==="settings"&&<PageSettings societe={societe} setSociete={setSociete} allData={{clients,rdvs,docs,devis,catalogue,societe,blocsPerso}} onImport={data=>{if(data.clients)setClients(data.clients);if(data.rdvs)setRdvs(data.rdvs);if(data.docs)setDocs(data.docs);if(data.devis)setDevis(data.devis);if(data.catalogue)setCatalogue(data.catalogue);if(data.societe)setSociete(data.societe);if(data.blocsPerso)setBlocsPerso(data.blocsPerso);alert("✓ Sauvegarde importée avec succès !");}}/>}
         </div>
         <nav className="mobile-nav">
           <div className="mobile-nav-inner">
