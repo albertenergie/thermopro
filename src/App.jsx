@@ -1032,7 +1032,26 @@ function ScannerOCR({onResult, onClose, equip}) {
   const analyzeFile=e=>{
     const file=e.target.files[0]; if(!file) return;
     const r=new FileReader();
-    r.onload=ev=>{ setPreview(ev.target.result); analyzeImage(ev.target.result); };
+    r.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=1600;
+        let w=img.width, h=img.height;
+        if(w>MAX||h>MAX){
+          if(w>h){ h=Math.round(h*MAX/w); w=MAX; }
+          else{ w=Math.round(w*MAX/h); h=MAX; }
+        }
+        const c=document.createElement("canvas");
+        c.width=w; c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        const compressed=c.toDataURL("image/jpeg",0.8);
+        setPreview(compressed);
+        analyzeImage(compressed);
+      };
+      img.onerror=()=>{ alert("Impossible de lire cette image, réessayez."); };
+      img.src=ev.target.result;
+    };
+    r.onerror=()=>{ alert("Erreur de lecture du fichier."); };
     r.readAsDataURL(file);
   };
 
