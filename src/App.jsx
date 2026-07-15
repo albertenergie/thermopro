@@ -116,7 +116,8 @@ const CSS = `
   .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:3px;}
   .cal-header span{text-align:center;font-size:0.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;padding:5px 0;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px;}
-  .cal-day{background:var(--surface);border:1px solid var(--border);border-radius:9px;min-height:78px;padding:6px;cursor:pointer;transition:all .15s;}
+  .cal-day{background:var(--surface);border:1px solid var(--border);border-radius:9px;min-height:96px;padding:6px;cursor:pointer;transition:all .15s;overflow:hidden;display:flex;flex-direction:column;}
+  .cal-more{font-size:0.6rem;color:var(--muted);font-weight:600;padding:2px 5px;margin-top:1px;}
   .cal-day:hover{border-color:var(--accent);}
   .cal-day.today{border-color:var(--accent);background:#f9731608;}
   .cal-day.selected{border-color:var(--accent);border-width:2px;}
@@ -1334,8 +1335,8 @@ function ModalClient({client, onSave, onClose}) {
   );
 }
 
-function ModalRdv({rdv, clients, onSave, onClose}) {
-  const [f,setF]=useState(rdv||{clientId:"",date:todayStr(),heure:"08:00",type:"Entretien annuel",statut:"En attente",notes:""});
+function ModalRdv({rdv, initial, clients, onSave, onClose}) {
+  const [f,setF]=useState(rdv||{clientId:"",date:initial?.date||todayStr(),heure:initial?.heure||"08:00",duree:1,type:"Entretien annuel",statut:"En attente",notes:""});
   const [clientSearch,setClientSearch]=useState(()=>{if(rdv?.clientId){const c=clients.find(x=>x.id===rdv.clientId);return c?`${c.prenom} ${c.nom}`:"";} return "";});
   const [showDrop,setShowDrop]=useState(false);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -1355,6 +1356,7 @@ function ModalRdv({rdv, clients, onSave, onClose}) {
         </div>
         <div className="form-group"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
         <div className="form-group"><label>Heure</label><input type="time" value={f.heure} onChange={e=>s("heure",e.target.value)}/></div>
+        <div className="form-group"><label>Durée (heures)</label><input type="number" min="0.5" step="0.5" value={f.duree||1} onChange={e=>s("duree",e.target.value)}/></div>
         <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Entretien annuel</option><option>Dépannage</option><option>Installation</option><option>Diagnostic</option><option>Autre</option></select></div>
         <div className="form-group"><label>Statut</label><select value={f.statut} onChange={e=>s("statut",e.target.value)}><option>En attente</option><option>Confirmé</option><option>Réalisé</option><option>Annulé</option></select></div>
         <div className="form-group full"><label>Notes</label><textarea value={f.notes} onChange={e=>s("notes",e.target.value)}/></div>
@@ -1751,16 +1753,11 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
     if(b.mode==="plage")return `${b.titre} (jusqu'au ${fmt(b.dateFin)})`;
     return b.titre;
   };
-  const blocHourMatch=(b,hi)=>{
-    if(b.mode==="heure"){const [hh]=b.heureDebut.split(":").map(Number);return hh===hi+7;}
-    if(b.mode==="apresmidi")return hi+7===14;
-    return false;
-  };
   const saveBloc=f=>{if(modalBloc.mode==="new")setBlocsPerso(p=>[...p,{...f,id:newId(p)}]);else setBlocsPerso(p=>p.map(b=>b.id===modalBloc.bloc.id?{...f,id:b.id}:b));setModalBloc(null);};
   const delBloc=()=>{if(confirm("Supprimer ce bloc ?"))setBlocsPerso(p=>p.filter(b=>b.id!==modalBloc.bloc.id));setModalBloc(null);};
   return (
     <div className="content">
-      {modalRdv&&<ModalRdv rdv={modalRdv.rdv} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
+      {modalRdv&&<ModalRdv rdv={modalRdv.rdv} initial={modalRdv.initial} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
       {modalBloc&&<ModalBlocPerso bloc={modalBloc.bloc} onSave={saveBloc} onDelete={delBloc} onClose={()=>setModalBloc(null)}/>}
       {wizard&&<WizardAgenda rdv={wizard.rdv} client={wizard.client} docs={docs} catalogue={catalogue} onSave={saveIntervention} onClose={()=>setWizard(null)}/>}
       {preview&&isAtt(preview.doc.type)&&<DocAttestation doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
@@ -1801,6 +1798,14 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
         const isToday=dayStr===todStr;
         const now=new Date();
         const nowPx=isToday?((now.getHours()-7)*60+now.getMinutes())/60*64:null;
+        const PXH=64;
+        const timeToMin=t=>{const [hh,mm]=(t||"07:00").split(":").map(Number);return hh*60+mm;};
+        const posFor=(heure,dureeH)=>{
+          const top=Math.max(0,(timeToMin(heure)-7*60)/60*PXH);
+          const height=Math.max(30,(Number(dureeH)||1)*PXH-4);
+          return {top,height};
+        };
+        const timedBlocs=blocsDay(dayStr).filter(b=>b.mode==="heure"||b.mode==="apresmidi");
         return (
           <div>
             <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",padding:"12px 18px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1813,51 +1818,60 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
                 <span className="badge" style={{background:"#a855f720",color:"#a855f7"}}>{b.type}</span>
               </div>
             ))}
-            <div style={{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",overflow:"hidden"}}>
-              {HOURS.map((h,hi)=>(
-                <div key={h} style={{display:"flex",borderBottom:"1px solid var(--border)",minHeight:64,position:"relative"}}>
-                  <div style={{width:52,flexShrink:0,padding:"4px 8px",fontSize:"0.7rem",color:"var(--muted)",fontWeight:600,borderRight:"1px solid var(--border)",background:"var(--surface2)",paddingTop:6}}>{h}</div>
-                  <div style={{flex:1,position:"relative",minHeight:64}}>
-                    {blocsDay(dayStr).filter(b=>blocHourMatch(b,hi)).map(b=>(
-                      <div key={b.id} onClick={()=>setModalBloc({mode:"edit",bloc:b})} style={{margin:"4px 8px",background:"#a855f715",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>
-                        <div style={{fontWeight:700,fontSize:"0.9rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
-                        <span className="badge" style={{background:"#a855f720",color:"#a855f7",marginTop:4,display:"inline-block"}}>{b.type}</span>
-                      </div>
-                    ))}
-                    {dayRdvs.filter(r=>{const rh=r.heure?.split(":")[0];return rh===String(hi+7).padStart(2,"0");}).map(r=>{
-                      const c=clients.find(x=>x.id===r.clientId);
-                      const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
-                      const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
-                      const isRealise=r.statut==="Réalisé";
-                      const isConfirme=r.statut==="Confirmé";
-                      return (
-                        <div key={r.id} style={{margin:"4px 8px",background:isRealise?"#22c55e15":isConfirme?"#f9731615":"#f59e0b15",border:`1px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderLeft:`4px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderRadius:8,padding:"8px 12px"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                            <div style={{flex:1}}>
-                              <div style={{fontWeight:700,fontSize:"0.95rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
-                              <div style={{fontSize:"0.82rem",color:"var(--muted)",marginTop:3}}>{r.type}</div>
-                              <div style={{fontSize:"0.8rem",marginTop:3}}><AddrLink client={c} style={{fontSize:"0.8rem"}}/></div>
-                              {c?.tel&&<div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:2}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
-                              {isRealise&&rdvDocs.length>0&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>{docIcon(d.type)} {d.type}</button>)}</div>}
-                            </div>
-                            <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,alignItems:"flex-end"}}>
-                              <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
-                              {!isRealise&&r.statut!=="Annulé"&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
-                              <div style={{display:"flex",gap:5}}>
-                                <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"edit",rdv:r})}>✏️</button>
-                                <button className="btn btn-danger btn-sm" onClick={()=>delRdv(r.id)}>🗑️</button>
-                              </div>
-                            </div>
+            <div style={{display:"flex",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",overflow:"hidden"}}>
+              <div style={{width:52,flexShrink:0,background:"var(--surface2)",borderRight:"1px solid var(--border)"}}>
+                {HOURS.map(h=><div key={h} style={{height:PXH,padding:"4px 8px",fontSize:"0.7rem",color:"var(--muted)",fontWeight:600,borderBottom:"1px solid var(--border)",boxSizing:"border-box"}}>{h}</div>)}
+              </div>
+              <div style={{flex:1,position:"relative"}}>
+                {HOURS.map((h,hi)=>(
+                  <div key={h} style={{height:PXH,borderBottom:"1px solid var(--border)",boxSizing:"border-box",cursor:"pointer"}}
+                    onClick={()=>setModalRdv({mode:"new",initial:{date:dayStr,heure:h}})}
+                    onMouseEnter={e=>e.currentTarget.style.background="#f9731608"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>
+                ))}
+                {timedBlocs.map(b=>{
+                  const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;
+                  const dureeH=b.mode==="apresmidi"?4:(b.duree||1);
+                  const {top,height}=posFor(startH,dureeH);
+                  return (
+                    <div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{position:"absolute",top,height,left:8,right:8,background:"#a855f720",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"6px 10px",cursor:"pointer",overflow:"hidden",zIndex:2}}>
+                      <div style={{fontWeight:700,fontSize:"0.85rem"}}>{blocIcon(b)} {startH} — {b.titre}</div>
+                      <span className="badge" style={{background:"#a855f730",color:"#a855f7",marginTop:3,display:"inline-block"}}>{b.type}</span>
+                    </div>
+                  );
+                })}
+                {dayRdvs.map(r=>{
+                  const c=clients.find(x=>x.id===r.clientId);
+                  const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
+                  const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
+                  const isRealise=r.statut==="Réalisé";
+                  const isConfirme=r.statut==="Confirmé";
+                  const {top,height}=posFor(r.heure,r.duree);
+                  return (
+                    <div key={r.id} onClick={e=>e.stopPropagation()} style={{position:"absolute",top,height,left:8,right:8,zIndex:3,overflowY:"auto",background:isRealise?"#22c55e15":isConfirme?"#f9731615":"#f59e0b15",border:`1px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderLeft:`4px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderRadius:8,padding:"6px 10px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:120}}>
+                          <div style={{fontWeight:700,fontSize:"0.85rem"}}>⏰ {r.heure} ({r.duree||1}h) — {c?.prenom} {c?.nom}</div>
+                          <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{r.type}</div>
+                          {height>=70&&<div style={{fontSize:"0.76rem",marginTop:2}}><AddrLink client={c} style={{fontSize:"0.76rem"}}/></div>}
+                          {height>=70&&c?.tel&&<div style={{fontSize:"0.76rem",color:"var(--muted)",marginTop:1}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
+                          {isRealise&&rdvDocs.length>0&&<div style={{marginTop:6,display:"flex",gap:5,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>{docIcon(d.type)} {d.type}</button>)}</div>}
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0,alignItems:"flex-end"}}>
+                          <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
+                          {!isRealise&&r.statut!=="Annulé"&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
+                          <div style={{display:"flex",gap:4}}>
+                            <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"edit",rdv:r})}>✏️</button>
+                            <button className="btn btn-danger btn-sm" onClick={()=>delRdv(r.id)}>🗑️</button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {nowPx!==null&&nowPx>0&&nowPx<14*64&&<div style={{position:"absolute",left:52,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-6,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {nowPx!==null&&nowPx>0&&nowPx<14*PXH&&<div style={{position:"absolute",left:0,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-4,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
+              </div>
             </div>
-            {dayRdvs.length===0&&<div className="empty" style={{marginTop:14}}><div className="icon">📅</div><p>Aucun RDV ce jour</p></div>}
+            {dayRdvs.length===0&&<div className="empty" style={{marginTop:14}}><div className="icon">📅</div><p>Aucun RDV ce jour · cliquez sur un créneau pour en créer un</p></div>}
           </div>
         );
       })()}
@@ -1865,7 +1879,24 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
       {viewMode==="mois"&&<>
         <div className="cal-header">{JOURS_FULL.map(j=><span key={j}>{j}</span>)}</div>
         <div className="cal-grid">
-          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{blocsDay(dStr).map(b=><div key={b.id} className="cal-chip" style={{background:"#a855f720",color:"#a855f7"}}>{blocIcon(b)} {b.titre}</div>)}{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?.nom}</div>;})}</div>);})}
+          {days.map((d,i)=>{
+            const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;
+            const dayBlocs=blocsDay(dStr);
+            const dayRdvsList=rdvsDay(d.date).sort((a,b)=>(a.heure||"").localeCompare(b.heure||""));
+            const items=[...dayBlocs.map(b=>({kind:"bloc",data:b})),...dayRdvsList.map(r=>({kind:"rdv",data:r}))];
+            const shown=items.slice(0,3);
+            const extra=items.length-shown.length;
+            return(
+              <div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}>
+                <div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>
+                {shown.map(it=>it.kind==="bloc"
+                  ?<div key={"b"+it.data.id} className="cal-chip" style={{background:"#a855f720",color:"#a855f7"}}>{blocIcon(it.data)} {it.data.titre}</div>
+                  :<div key={"r"+it.data.id} className="cal-chip">{it.data.heure} {clients.find(x=>x.id===it.data.clientId)?.nom}</div>
+                )}
+                {extra>0&&<div className="cal-more">+{extra} de plus</div>}
+              </div>
+            );
+          })}
         </div>
       </>}
 
@@ -1874,7 +1905,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
           <div className="week-header" style={{background:"var(--surface2)",borderRight:"1px solid var(--border)"}}></div>
           {weekDays.map((d,i)=>{const dStr=ds(d),isT=dStr===todStr;return(<div key={i} className="week-header"><div className="week-header-day">{JOURS_FULL[i]}</div><div className={`week-header-date${isT?" today-c":""}`}>{d.getDate()}</div></div>);})}
           <div className="week-time-col">{HOURS.map(h=><div key={h} className="week-time-slot">{h}</div>)}</div>
-          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);const dayBlocs=blocsDay(dStr);const allDayBlocs=dayBlocs.filter(b=>b.mode==="journee"||b.mode==="plage");const timedBlocs=dayBlocs.filter(b=>b.mode==="heure"||b.mode==="apresmidi");return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{allDayBlocs.length>0&&<div style={{position:"absolute",top:0,left:0,right:0,zIndex:5,padding:"2px 3px"}}>{allDayBlocs.map(b=><div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{background:"#a855f730",border:"1px solid #a855f7",borderRadius:4,padding:"2px 4px",fontSize:"0.62rem",marginBottom:2,cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{blocIcon(b)} {b.titre}</div>)}</div>}{HOURS.map(h=><div key={h} className="week-slot"/>)}{timedBlocs.map(b=>{const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;const top=heureToPx(startH);return(<div key={b.id} className="week-event" style={{top:top+1,background:"#a855f725",borderLeftColor:"#a855f7"}} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}}><div style={{fontWeight:700}}>{blocIcon(b)} {startH}</div><div>{b.titre}</div></div>);})}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?.nom}</div></div>);})}</div>);})}
+          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);const dayBlocs=blocsDay(dStr);const allDayBlocs=dayBlocs.filter(b=>b.mode==="journee"||b.mode==="plage");const timedBlocs=dayBlocs.filter(b=>b.mode==="heure"||b.mode==="apresmidi");return(<div key={di} className="week-day-col">{allDayBlocs.length>0&&<div style={{position:"absolute",top:0,left:0,right:0,zIndex:5,padding:"2px 3px"}}>{allDayBlocs.map(b=><div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{background:"#a855f730",border:"1px solid #a855f7",borderRadius:4,padding:"2px 4px",fontSize:"0.62rem",marginBottom:2,cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{blocIcon(b)} {b.titre}</div>)}</div>}{HOURS.map(h=><div key={h} className="week-slot" onClick={()=>{setSelected(dStr);setModalRdv({mode:"new",initial:{date:dStr,heure:h}});}}/>)}{timedBlocs.map(b=>{const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;const dureeH=b.mode==="apresmidi"?4:(b.duree||1);const top=heureToPx(startH);const height=Math.max(22,dureeH*52-2);return(<div key={b.id} className="week-event" style={{top:top+1,height,background:"#a855f725",borderLeftColor:"#a855f7"}} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}}><div style={{fontWeight:700}}>{blocIcon(b)} {startH}</div><div>{b.titre}</div></div>);})}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);const height=Math.max(22,(Number(r.duree)||1)*52-2);return(<div key={r.id} className="week-event" style={{top:top+1,height}} onClick={e=>{e.stopPropagation();setModalRdv({mode:"edit",rdv:r});}}><div style={{fontWeight:700}}>{r.heure} ({r.duree||1}h)</div><div>{c?.nom}</div></div>);})}</div>);})}
         </div>
       </div>}
 
