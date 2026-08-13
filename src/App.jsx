@@ -33,10 +33,15 @@ async function charger(col) {
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300;600;900&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root {
+    --bg:#eef1f5;--surface:#ffffff;--surface2:#f4f6f9;--border:#d8dee7;
+    --accent:#e2620a;--accent2:#f97316;--text:#12161f;--muted:#5b6675;
+    --success:#15803d;--danger:#b91c1c;--warning:#b45309;--info:#1a56db;
+    --radius:14px;--font-head:'Fraunces',serif;--font-body:'DM Sans',sans-serif;
+  }
+  body.theme-dark {
     --bg:#0d1117;--surface:#161b27;--surface2:#1c2334;--border:#252d42;
     --accent:#f97316;--accent2:#fb923c;--text:#e2e8f0;--muted:#64748b;
     --success:#22c55e;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;
-    --radius:14px;--font-head:'Fraunces',serif;--font-body:'DM Sans',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;}
@@ -83,7 +88,7 @@ const CSS = `
   .table-wrap{overflow-x:auto;}
   table{width:100%;border-collapse:collapse;font-size:0.85rem;}
   th{text-align:left;padding:10px 14px;color:var(--muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);font-weight:600;}
-  td{padding:11px 14px;border-bottom:1px solid #ffffff06;vertical-align:middle;}
+  td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
   tr:last-child td{border-bottom:none;}
   tr:hover td{background:var(--surface2);}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -116,8 +121,7 @@ const CSS = `
   .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:3px;}
   .cal-header span{text-align:center;font-size:0.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;padding:5px 0;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px;}
-  .cal-day{background:var(--surface);border:1px solid var(--border);border-radius:9px;min-height:96px;padding:6px;cursor:pointer;transition:all .15s;overflow:hidden;display:flex;flex-direction:column;}
-  .cal-more{font-size:0.6rem;color:var(--muted);font-weight:600;padding:2px 5px;margin-top:1px;}
+  .cal-day{background:var(--surface);border:1px solid var(--border);border-radius:9px;min-height:78px;padding:6px;cursor:pointer;transition:all .15s;}
   .cal-day:hover{border-color:var(--accent);}
   .cal-day.today{border-color:var(--accent);background:#f9731608;}
   .cal-day.selected{border-color:var(--accent);border-width:2px;}
@@ -134,7 +138,7 @@ const CSS = `
   .week-time-slot{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;padding:3px 4px;font-size:0.6rem;color:var(--muted);}
   .week-day-col{border-right:1px solid var(--border);position:relative;min-height:780px;}
   .week-day-col:last-child{border-right:none;}
-  .week-slot{height:52px;border-bottom:1px solid #ffffff05;cursor:pointer;}
+  .week-slot{height:52px;border-bottom:1px solid var(--border);cursor:pointer;}
   .week-slot:hover{background:#f9731608;}
   .week-event{position:absolute;left:2px;right:2px;border-radius:5px;background:#f9731625;border-left:3px solid var(--accent);padding:3px 6px;font-size:0.65rem;cursor:pointer;overflow:hidden;}
   .week-event:hover{background:#f9731640;}
@@ -297,6 +301,31 @@ const CHECKS_CLIM = ["Nettoyage filtres unité intérieure","Nettoyage évaporat
 const MARQUES_CHAUDIERE = ["Viessmann","Atlantic","Saunier Duval","De Dietrich","Bosch","Vaillant","Chaffoteaux","Elm Leblanc","Frisquet","Chappée","Remeha","Wolf","Autre"];
 const MARQUES_CLIM = ["Daikin","Mitsubishi Electric","Mitsubishi Heavy","Atlantic","Hitachi","Toshiba","Fujitsu","Samsung","LG","Panasonic","Gree","Carrier","Airwell","Thermor","Autre"];
 const MARQUES_PAC = ["Atlantic","Mitsubishi Electric","Daikin","Hitachi","Viessmann","De Dietrich","Bosch","Vaillant","Saunier Duval","Thermor","Ariston","Chaffoteaux","Autre"];
+
+// --- Marques personnalisées mémorisées ---
+let MARQUES_PERSO = (()=>{ try{ return JSON.parse(localStorage.getItem("marques-perso")||"[]"); }catch{ return []; } })();
+function addMarquePerso(m){
+  if(!m||typeof m!=="string") return;
+  const v=m.trim();
+  if(v.length<2) return;
+  if(MARQUES_PERSO.some(x=>x.toLowerCase()===v.toLowerCase())) return;
+  MARQUES_PERSO=[...MARQUES_PERSO,v];
+  try{ localStorage.setItem("marques-perso",JSON.stringify(MARQUES_PERSO)); }catch{}
+}
+function marquesFor(base){
+  const all=[...base.filter(m=>m!=="Autre"),...MARQUES_PERSO];
+  return [...new Set(all)].sort((a,b)=>a.localeCompare(b,"fr"));
+}
+function MarqueInput({value,onChange,options,listId}){
+  return (
+    <>
+      <input list={listId} value={value||""} placeholder="Choisir ou saisir…"
+        onChange={e=>onChange(e.target.value)}
+        onBlur={e=>addMarquePerso(e.target.value)}/>
+      <datalist id={listId}>{marquesFor(options).map(m=><option key={m} value={m}/>)}</datalist>
+    </>
+  );
+}
 const TYPES_EQUIP = ["Chaudière gaz","Chaudière fioul","Chauffe-eau gaz","Climatisation","Pompe à chaleur","Poêle à bois"];
 const TYPES_CLIM = ["Simple split","Bi-split","Tri-split","Gainable","Multi-split","Cassette"];
 const MARQUES_GICLEUR = ["Steinen","Danfoss","Delavan","Fluidix","Autre"];
@@ -711,8 +740,7 @@ function DocBon({doc, client, societe, onClose}) {
           <div className="a4-sig-box">
             <div className="a4-sig-label">Signature et cachet du client</div>
             {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:50,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
-            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
-            <div className="a4-sig-line">Date et signature</div>
+            <div className="a4-sig-line">Bon pour accord</div>
           </div>
         </div>
         <div className="a4-footer">{societe.nom} — SIRET {societe.siret} — APE 4322B — {societe.tel} — {societe.email}</div>
@@ -1019,13 +1047,9 @@ function ScannerOCR({onResult, onClose, equip}) {
 
   const capture=()=>{
     const v=videoRef.current, c=canvasRef.current;
-    if(!v || !c || !v.videoWidth || !v.videoHeight){
-      alert("La caméra n'est pas encore prête, réessayez dans 1 seconde.");
-      return;
-    }
     c.width=v.videoWidth; c.height=v.videoHeight;
     c.getContext("2d").drawImage(v,0,0);
-    const dataUrl=c.toDataURL("image/jpeg",0.85);
+    const dataUrl=c.toDataURL("image/jpeg",0.95);
     setPreview(dataUrl);
     analyzeImage(dataUrl);
   };
@@ -1033,60 +1057,106 @@ function ScannerOCR({onResult, onClose, equip}) {
   const analyzeFile=e=>{
     const file=e.target.files[0]; if(!file) return;
     const r=new FileReader();
-    r.onload=ev=>{
-      const img=new Image();
-      img.onload=()=>{
-        const MAX=1600;
-        let w=img.width, h=img.height;
-        if(w>MAX||h>MAX){
-          if(w>h){ h=Math.round(h*MAX/w); w=MAX; }
-          else{ w=Math.round(w*MAX/h); h=MAX; }
-        }
-        const c=document.createElement("canvas");
-        c.width=w; c.height=h;
-        c.getContext("2d").drawImage(img,0,0,w,h);
-        const compressed=c.toDataURL("image/jpeg",0.8);
-        setPreview(compressed);
-        analyzeImage(compressed);
-      };
-      img.onerror=()=>{ alert("Impossible de lire cette image, réessayez."); };
-      img.src=ev.target.result;
-    };
-    r.onerror=()=>{ alert("Erreur de lecture du fichier."); };
+    r.onload=ev=>{ setPreview(ev.target.result); analyzeImage(ev.target.result); };
     r.readAsDataURL(file);
   };
 
   const analyzeImage=async(dataUrl)=>{
     setScanning(true); setResult(null); setProgress(0);
-    setStatus("Lecture de la plaque...");
+    setStatus("Préparation de l'image...");
     try{
-      if(!dataUrl || typeof dataUrl!=="string" || !dataUrl.includes(",")){
-        throw new Error("Image invalide, réessayez la capture.");
-      }
-      const base64=dataUrl.split(",")[1];
-      const mediaType=dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
+      // Réduire la taille de l'image avant envoi
+      const compressed=await new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{
+          const canvas=document.createElement("canvas");
+          const maxW=1280;
+          const scale=Math.min(1,maxW/img.width);
+          canvas.width=img.width*scale;
+          canvas.height=img.height*scale;
+          canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+          resolve(canvas.toDataURL("image/jpeg",0.85));
+        };
+        img.src=dataUrl;
+      });
+      const base64=compressed.split(",")[1];
+      const mediaType="image/jpeg";
       setProgress(30);
+      setStatus("Lecture de la plaque...");
       const response=await fetch("/api/scan",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({image:base64,mediaType})
       });
       setProgress(80);
-      if(!response.ok){
-        let errText="";
-        try{ errText=await response.text(); }catch(_){ errText=""; }
-        throw new Error(`Erreur serveur (${response.status}) : ${errText.slice(0,200)}`);
-      }
       const parsed=await response.json();
       if(parsed.error) throw new Error(parsed.error);
       setProgress(100);
       setStatus("Terminé !");
       setResult({...parsed,rawText:JSON.stringify(parsed,null,2)});
-    }catch(e){
-      console.error("Erreur scan complet:", e);
-      alert("Erreur : "+(e.message||"inconnue"));
-    }
+    }catch(e){ alert("Erreur : "+e.message); }
     setScanning(false);
+  };
+
+  const MARQUES=["Chaffoteaux","Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Bosch","Bulex","Frisquet","Geminox","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova","Remeha","Immergas","Unical","Chappée","Domusa"];
+
+  const parseText=(text,type)=>{
+    let marque="",modele="",numSerie="",puissance="",fluide="";
+    const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+
+    // 1. MARQUE
+    for(const m of MARQUES){
+      if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; }
+    }
+
+    // 2. MODÈLE — cherche "MOD" ou "Modèle" ou "Model"
+    const modPatterns=[
+      /MOD\s+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]odel\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+      /[Mm]odello\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
+    ];
+    for(const p of modPatterns){
+      const m=text.match(p);
+      if(m){ modele=m[1].trim().split('\n')[0].trim().replace(/\s+/g,' ').slice(0,30); break; }
+    }
+    // Fallback — pattern alphanum classique type NECTRA TOP 2.23 FF
+    if(!modele){
+      const mm=text.match(/[A-Z]{3,}[\s\-][A-Z]{2,}[\s\-]?\d+[.,]?\d*[\s]?[A-Z]{0,4}/);
+      if(mm) modele=mm[0].trim().slice(0,30);
+    }
+
+    // 3. N° SÉRIE — cherche "N°", "Serial", "Matr", "S/N"
+    const seriePatterns=[
+      /[Nn][°º]\s*([A-Z0-9]{5,20}[-]?[A-Z0-9]{0,8})/,
+      /[Ss]\/?[Nn]\s*[:\s]*([A-Z0-9]{5,20})/,
+      /[Mm]atr\.?\s*[Nn][°o]\s*[:\s]*([A-Z0-9]{5,20})/,
+      /[Ss]er[ie]+[^:]*[:\s]+([A-Z0-9]{5,20})/,
+      /\b(\d{9,15}[-]?\d{0,4})\b/,
+      /\b([A-Z]\d{7,15})\b/,
+    ];
+    for(const p of seriePatterns){
+      const m=text.match(p);
+      if(m){ numSerie=(m[1]||m[0]).trim(); break; }
+    }
+
+    // 4. PUISSANCE — cherche kW
+    const puissPatterns=[
+      /(\d+[.,]\d+)\s*k[Ww]/,
+      /(\d+)\s*k[Ww]/,
+    ];
+    for(const p of puissPatterns){
+      const m=text.match(p);
+      if(m){ puissance=m[0].replace(/\s/g,""); break; }
+    }
+
+    // 5. FLUIDE — seulement clim/PAC
+    if(type==="Climatisation"||type==="Pompe à chaleur"){
+      const fm=text.match(/R[-]?(\d{2,3}[A-Za-z]*)/i);
+      if(fm) fluide=fm[0].replace(/\s/g,"");
+    }
+
+    return {marque,modele,numSerie,puissance,fluide,rawText:text};
   };
 
   return(
@@ -1190,7 +1260,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
           <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
             <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
             <div className="form-grid">
-              <div className="form-group"><label>Marque</label><select value={equip.marqueClim||""} onChange={e=>s("marqueClim",e.target.value)}><option value="">—</option>{MARQUES_CLIM.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div className="form-group"><label>Marque</label><MarqueInput value={equip.marqueClim} onChange={v=>s("marqueClim",v)} options={MARQUES_CLIM} listId="dl-marque-clim"/></div>
               <div className="form-group"><label>Modèle</label><input value={equip.modeleExt||""} onChange={e=>s("modeleExt",e.target.value)}/></div>
               <div className="form-group"><label>N° série</label><input value={equip.numSerieExt||""} onChange={e=>s("numSerieExt",e.target.value)}/></div>
               <div className="form-group"><label>Puissance (kW)</label><input value={equip.puissanceClim||""} onChange={e=>s("puissanceClim",e.target.value)}/></div>
@@ -1214,7 +1284,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
           <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
             <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
             <div className="form-grid">
-              <div className="form-group"><label>Marque</label><select value={equip.marquePac||""} onChange={e=>s("marquePac",e.target.value)}><option value="">—</option>{MARQUES_PAC.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div className="form-group"><label>Marque</label><MarqueInput value={equip.marquePac} onChange={v=>s("marquePac",v)} options={MARQUES_PAC} listId="dl-marque-pac"/></div>
               <div className="form-group"><label>Modèle</label><input value={equip.modelePac||""} onChange={e=>s("modelePac",e.target.value)}/></div>
               <div className="form-group"><label>N° série</label><input value={equip.numSeriePac||""} onChange={e=>s("numSeriePac",e.target.value)}/></div>
               <div className="form-group"><label>Puissance (kW)</label><input value={equip.puissancePac||""} onChange={e=>s("puissancePac",e.target.value)}/></div>
@@ -1232,7 +1302,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </div>
           </div>
         </>}
-        {isChaud&&<><div className="form-group"><label>Marque</label><select value={equip.marque||""} onChange={e=>s("marque",e.target.value)}><option value="">—</option>{MARQUES_CHAUDIERE.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div>{isGaz&&<div className="form-group"><label>Type de gaz</label><select value={equip.gaz||"Gaz naturel"} onChange={e=>s("gaz",e.target.value)}><option>Gaz naturel</option><option>Propane</option><option>Butane</option></select></div>}</>}
+        {isChaud&&<><div className="form-group"><label>Marque</label><MarqueInput value={equip.marque} onChange={v=>s("marque",v)} options={MARQUES_CHAUDIERE} listId="dl-marque-chaud"/></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div>{isGaz&&<div className="form-group"><label>Type de gaz</label><select value={equip.gaz||"Gaz naturel"} onChange={e=>s("gaz",e.target.value)}><option>Gaz naturel</option><option>Propane</option><option>Butane</option></select></div>}</>}
         {isFioul&&<><div className="form-group"><label>Marque brûleur</label><input value={equip.marqueBruleur||""} onChange={e=>s("marqueBruleur",e.target.value)}/></div><div className="form-group"><label>Modèle brûleur</label><input value={equip.modeleBruleur||""} onChange={e=>s("modeleBruleur",e.target.value)}/></div><div className="form-group"><label>Marque gicleur</label><select value={equip.marqueGicleur||"Steinen"} onChange={e=>s("marqueGicleur",e.target.value)}>{MARQUES_GICLEUR.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Débit (gal/h)</label><input value={equip.debitGicleur||""} onChange={e=>s("debitGicleur",e.target.value)}/></div><div className="form-group"><label>Angle</label><select value={equip.angleGicleur||"60°"} onChange={e=>s("angleGicleur",e.target.value)}>{ANGLES_GICLEUR.map(a=><option key={a}>{a}</option>)}</select></div><div className="form-group"><label>Spectre</label><select value={equip.spectreGicleur||"S (solide)"} onChange={e=>s("spectreGicleur",e.target.value)}>{SPECTRES_GICLEUR.map(sp=><option key={sp}>{sp}</option>)}</select></div></>}
         <div style={{gridColumn:"1/-1",marginTop:6,fontSize:"0.75rem",fontWeight:700,color:"var(--muted)",textTransform:"uppercase",borderTop:"1px solid var(--border)",paddingTop:12}}>📄 Contrat</div>
         <div className="form-group"><label>Type contrat</label><select value={equip.contrat||""} onChange={e=>s("contrat",e.target.value)}><option value="">Aucun</option><option>Contrat entretien</option><option>Contrat pièces et MO</option><option>Autre</option></select></div>
@@ -1335,8 +1405,8 @@ function ModalClient({client, onSave, onClose}) {
   );
 }
 
-function ModalRdv({rdv, initial, clients, onSave, onClose}) {
-  const [f,setF]=useState(rdv||{clientId:"",date:initial?.date||todayStr(),heure:initial?.heure||"08:00",duree:1,type:"Entretien annuel",statut:"En attente",notes:""});
+function ModalRdv({rdv, clients, onSave, onClose}) {
+  const [f,setF]=useState(rdv||{clientId:"",date:todayStr(),heure:"08:00",type:"Entretien annuel",statut:"En attente",notes:""});
   const [clientSearch,setClientSearch]=useState(()=>{if(rdv?.clientId){const c=clients.find(x=>x.id===rdv.clientId);return c?`${c.prenom} ${c.nom}`:"";} return "";});
   const [showDrop,setShowDrop]=useState(false);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -1356,7 +1426,6 @@ function ModalRdv({rdv, initial, clients, onSave, onClose}) {
         </div>
         <div className="form-group"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
         <div className="form-group"><label>Heure</label><input type="time" value={f.heure} onChange={e=>s("heure",e.target.value)}/></div>
-        <div className="form-group"><label>Durée (heures)</label><input type="number" min="0.5" step="0.5" value={f.duree||1} onChange={e=>s("duree",e.target.value)}/></div>
         <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Entretien annuel</option><option>Dépannage</option><option>Installation</option><option>Diagnostic</option><option>Autre</option></select></div>
         <div className="form-group"><label>Statut</label><select value={f.statut} onChange={e=>s("statut",e.target.value)}><option>En attente</option><option>Confirmé</option><option>Réalisé</option><option>Annulé</option></select></div>
         <div className="form-group full"><label>Notes</label><textarea value={f.notes} onChange={e=>s("notes",e.target.value)}/></div>
@@ -1680,40 +1749,7 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
   );
 }
 
-function ModalBlocPerso({bloc, onSave, onDelete, onClose}) {
-  const [f,setF]=useState(bloc||{titre:"",type:"Perso",mode:"heure",date:todayStr(),dateFin:todayStr(),heureDebut:"09:00",duree:1});
-  const s=(k,v)=>setF(p=>({...p,[k]:v}));
-  return (
-    <div className="modal-overlay"><div className="modal">
-      <div className="modal-title">{bloc?"Modifier le bloc":"Nouveau bloc perso"}</div>
-      <div className="form-grid">
-        <div className="form-group full"><label>Titre</label><input value={f.titre} onChange={e=>s("titre",e.target.value)} placeholder="Ex : RDV dentiste, Vacances Bretagne..."/></div>
-        <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Perso</option><option>Vacances</option></select></div>
-        <div className="form-group"><label>Durée</label><select value={f.mode} onChange={e=>s("mode",e.target.value)}>
-          <option value="heure">Heure précise</option>
-          <option value="apresmidi">Après-midi</option>
-          <option value="journee">Journée entière</option>
-          <option value="plage">Plage de dates</option>
-        </select></div>
-        {f.mode==="plage"?<>
-          <div className="form-group"><label>Du</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
-          <div className="form-group"><label>Au</label><input type="date" value={f.dateFin} onChange={e=>s("dateFin",e.target.value)}/></div>
-        </>:<div className="form-group full"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>}
-        {f.mode==="heure"&&<>
-          <div className="form-group"><label>Heure de début</label><input type="time" value={f.heureDebut} onChange={e=>s("heureDebut",e.target.value)}/></div>
-          <div className="form-group"><label>Durée (heures)</label><input type="number" min="0.5" step="0.5" value={f.duree} onChange={e=>s("duree",e.target.value)}/></div>
-        </>}
-      </div>
-      <div className="form-actions">
-        {bloc&&<button className="btn btn-danger" onClick={onDelete} style={{marginRight:"auto"}}>🗑 Supprimer</button>}
-        <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-        <button className="btn btn-primary" onClick={()=>onSave(f)} disabled={!f.titre||!f.date}>Enregistrer</button>
-      </div>
-    </div></div>
-  );
-}
-
-function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, blocsPerso, setBlocsPerso}) {
+function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe}) {
   const [viewMode,setViewMode]=useState("jour");
   const [year,setYear]=useState(TODAY.getFullYear());
   const [month,setMonth]=useState(TODAY.getMonth());
@@ -1721,7 +1757,6 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
   const [dayDate,setDayDate]=useState(new Date(TODAY));
   const [selected,setSelected]=useState(todayStr());
   const [modalRdv,setModalRdv]=useState(null);
-  const [modalBloc,setModalBloc]=useState(null);
   const [wizard,setWizard]=useState(null);
   const [preview,setPreview]=useState(null);
   const days=getDays(year,month);
@@ -1744,21 +1779,9 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
   const isAtt=t=>t?.startsWith("Attestation");
   const heureToPx=h=>{const [hh,mm]=h.split(":").map(Number);return((hh-7)*60+mm)/60*52;};
   const weekLabel=()=>{const first=weekDays[0],last=weekDays[6];return `${first.getDate()} – ${last.getDate()} ${MOIS[last.getMonth()]} ${last.getFullYear()}`;};
-  const isBlocOnDay=(b,dateStr)=>b.mode==="plage"?(dateStr>=b.date&&dateStr<=(b.dateFin||b.date)):b.date===dateStr;
-  const blocsDay=dateStr=>blocsPerso.filter(b=>isBlocOnDay(b,dateStr));
-  const blocIcon=b=>b.type==="Vacances"?"🌴":"📌";
-  const blocLabel=b=>{
-    if(b.mode==="heure")return `${b.heureDebut} · ${b.titre}`;
-    if(b.mode==="apresmidi")return `Après-midi · ${b.titre}`;
-    if(b.mode==="plage")return `${b.titre} (jusqu'au ${fmt(b.dateFin)})`;
-    return b.titre;
-  };
-  const saveBloc=f=>{if(modalBloc.mode==="new")setBlocsPerso(p=>[...p,{...f,id:newId(p)}]);else setBlocsPerso(p=>p.map(b=>b.id===modalBloc.bloc.id?{...f,id:b.id}:b));setModalBloc(null);};
-  const delBloc=()=>{if(confirm("Supprimer ce bloc ?"))setBlocsPerso(p=>p.filter(b=>b.id!==modalBloc.bloc.id));setModalBloc(null);};
   return (
     <div className="content">
-      {modalRdv&&<ModalRdv rdv={modalRdv.rdv} initial={modalRdv.initial} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
-      {modalBloc&&<ModalBlocPerso bloc={modalBloc.bloc} onSave={saveBloc} onDelete={delBloc} onClose={()=>setModalBloc(null)}/>}
+      {modalRdv&&<ModalRdv rdv={modalRdv.rdv} clients={clients} onSave={saveRdv} onClose={()=>setModalRdv(null)}/>}
       {wizard&&<WizardAgenda rdv={wizard.rdv} client={wizard.client} docs={docs} catalogue={catalogue} onSave={saveIntervention} onClose={()=>setWizard(null)}/>}
       {preview&&isAtt(preview.doc.type)&&<DocAttestation doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
       {preview&&!isAtt(preview.doc.type)&&<DocBon doc={preview.doc} client={preview.client} societe={societe} onClose={()=>setPreview(null)}/>}
@@ -1786,10 +1809,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
             <button className="btn btn-ghost btn-sm" onClick={nextWeek}>›</button>
           </div>}
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <button className="btn btn-secondary" onClick={()=>setModalBloc({mode:"new"})}>+ Bloc perso</button>
-          <button className="btn btn-primary" onClick={()=>setModalRdv({mode:"new"})}>+ Nouveau RDV</button>
-        </div>
+        <button className="btn btn-primary" onClick={()=>setModalRdv({mode:"new"})}>+ Nouveau RDV</button>
       </div>
 
       {viewMode==="jour"&&(()=>{
@@ -1798,80 +1818,51 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
         const isToday=dayStr===todStr;
         const now=new Date();
         const nowPx=isToday?((now.getHours()-7)*60+now.getMinutes())/60*64:null;
-        const PXH=64;
-        const timeToMin=t=>{const [hh,mm]=(t||"07:00").split(":").map(Number);return hh*60+mm;};
-        const posFor=(heure,dureeH)=>{
-          const top=Math.max(0,(timeToMin(heure)-7*60)/60*PXH);
-          const height=Math.max(30,(Number(dureeH)||1)*PXH-4);
-          return {top,height};
-        };
-        const timedBlocs=blocsDay(dayStr).filter(b=>b.mode==="heure"||b.mode==="apresmidi");
         return (
           <div>
             <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",padding:"12px 18px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <div><span style={{fontWeight:700,fontSize:"1rem"}}>{dayRdvs.length} RDV</span><span style={{color:"var(--muted)",fontSize:"0.85rem",marginLeft:10}}>{dayRdvs.filter(r=>r.statut==="Réalisé").length} réalisé(s)</span></div>
               {isToday&&<span className="badge badge-accent">Aujourd'hui</span>}
             </div>
-            {blocsDay(dayStr).filter(b=>b.mode==="journee"||b.mode==="plage").map(b=>(
-              <div key={b.id} onClick={()=>setModalBloc({mode:"edit",bloc:b})} style={{background:"#a855f715",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"10px 14px",marginBottom:10,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontWeight:600,fontSize:"0.88rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
-                <span className="badge" style={{background:"#a855f720",color:"#a855f7"}}>{b.type}</span>
-              </div>
-            ))}
-            <div style={{display:"flex",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",overflow:"hidden"}}>
-              <div style={{width:52,flexShrink:0,background:"var(--surface2)",borderRight:"1px solid var(--border)"}}>
-                {HOURS.map(h=><div key={h} style={{height:PXH,padding:"4px 8px",fontSize:"0.7rem",color:"var(--muted)",fontWeight:600,borderBottom:"1px solid var(--border)",boxSizing:"border-box"}}>{h}</div>)}
-              </div>
-              <div style={{flex:1,position:"relative"}}>
-                {HOURS.map((h,hi)=>(
-                  <div key={h} style={{height:PXH,borderBottom:"1px solid var(--border)",boxSizing:"border-box",cursor:"pointer"}}
-                    onClick={()=>setModalRdv({mode:"new",initial:{date:dayStr,heure:h}})}
-                    onMouseEnter={e=>e.currentTarget.style.background="#f9731608"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}/>
-                ))}
-                {timedBlocs.map(b=>{
-                  const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;
-                  const dureeH=b.mode==="apresmidi"?4:(b.duree||1);
-                  const {top,height}=posFor(startH,dureeH);
-                  return (
-                    <div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{position:"absolute",top,height,left:8,right:8,background:"#a855f720",border:"1px solid #a855f7",borderLeft:"4px solid #a855f7",borderRadius:8,padding:"6px 10px",cursor:"pointer",overflow:"hidden",zIndex:2}}>
-                      <div style={{fontWeight:700,fontSize:"0.85rem"}}>{blocIcon(b)} {startH} — {b.titre}</div>
-                      <span className="badge" style={{background:"#a855f730",color:"#a855f7",marginTop:3,display:"inline-block"}}>{b.type}</span>
-                    </div>
-                  );
-                })}
-                {dayRdvs.map(r=>{
-                  const c=clients.find(x=>x.id===r.clientId);
-                  const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
-                  const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
-                  const isRealise=r.statut==="Réalisé";
-                  const isConfirme=r.statut==="Confirmé";
-                  const {top,height}=posFor(r.heure,r.duree);
-                  return (
-                    <div key={r.id} onClick={e=>e.stopPropagation()} style={{position:"absolute",top,height,left:8,right:8,zIndex:3,overflowY:"auto",background:isRealise?"#22c55e15":isConfirme?"#f9731615":"#f59e0b15",border:`1px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderLeft:`4px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderRadius:8,padding:"6px 10px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:120}}>
-                          <div style={{fontWeight:700,fontSize:"0.85rem"}}>⏰ {r.heure} ({r.duree||1}h) — {c?.prenom} {c?.nom}</div>
-                          <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{r.type}</div>
-                          {height>=70&&<div style={{fontSize:"0.76rem",marginTop:2}}><AddrLink client={c} style={{fontSize:"0.76rem"}}/></div>}
-                          {height>=70&&c?.tel&&<div style={{fontSize:"0.76rem",color:"var(--muted)",marginTop:1}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
-                          {isRealise&&rdvDocs.length>0&&<div style={{marginTop:6,display:"flex",gap:5,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>{docIcon(d.type)} {d.type}</button>)}</div>}
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0,alignItems:"flex-end"}}>
-                          <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
-                          {!isRealise&&r.statut!=="Annulé"&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
-                          <div style={{display:"flex",gap:4}}>
-                            <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"edit",rdv:r})}>✏️</button>
-                            <button className="btn btn-danger btn-sm" onClick={()=>delRdv(r.id)}>🗑️</button>
+            <div style={{position:"relative",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"14px",overflow:"hidden"}}>
+              {HOURS.map((h,hi)=>(
+                <div key={h} style={{display:"flex",borderBottom:"1px solid var(--border)",minHeight:64,position:"relative"}}>
+                  <div style={{width:52,flexShrink:0,padding:"4px 8px",fontSize:"0.7rem",color:"var(--muted)",fontWeight:600,borderRight:"1px solid var(--border)",background:"var(--surface2)",paddingTop:6}}>{h}</div>
+                  <div style={{flex:1,position:"relative",minHeight:64}}>
+                    {dayRdvs.filter(r=>{const rh=r.heure?.split(":")[0];return rh===String(hi+7).padStart(2,"0");}).map(r=>{
+                      const c=clients.find(x=>x.id===r.clientId);
+                      const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
+                      const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
+                      const isRealise=r.statut==="Réalisé";
+                      const isConfirme=r.statut==="Confirmé";
+                      return (
+                        <div key={r.id} style={{margin:"4px 8px",background:isRealise?"#22c55e15":isConfirme?"#f9731615":"#f59e0b15",border:`1px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderLeft:`4px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderRadius:8,padding:"8px 12px"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontWeight:700,fontSize:"0.95rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
+                              <div style={{fontSize:"0.82rem",color:"var(--muted)",marginTop:3}}>{r.type}</div>
+                              <div style={{fontSize:"0.8rem",marginTop:3}}><AddrLink client={c} style={{fontSize:"0.8rem"}}/></div>
+                              {c?.tel&&<div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:2}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
+                              {isRealise&&rdvDocs.length>0&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{rdvDocs.map(d=><button key={d.id} className="btn btn-success btn-sm" onClick={()=>openPreview(d)}>{docIcon(d.type)} {d.type}</button>)}</div>}
+                            </div>
+                            <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,alignItems:"flex-end"}}>
+                              <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
+                              {!isRealise&&r.statut!=="Annulé"&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
+                              <div style={{display:"flex",gap:5}}>
+                                <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"edit",rdv:r})}>✏️</button>
+                                <button className="btn btn-danger btn-sm" onClick={()=>delRdv(r.id)}>🗑️</button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {nowPx!==null&&nowPx>0&&nowPx<14*PXH&&<div style={{position:"absolute",left:0,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-4,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {nowPx!==null&&nowPx>0&&nowPx<14*64&&<div style={{position:"absolute",left:52,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-6,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
             </div>
-            {dayRdvs.length===0&&<div className="empty" style={{marginTop:14}}><div className="icon">📅</div><p>Aucun RDV ce jour · cliquez sur un créneau pour en créer un</p></div>}
+            {dayRdvs.length===0&&<div className="empty" style={{marginTop:14}}><div className="icon">📅</div><p>Aucun RDV ce jour</p></div>}
           </div>
         );
       })()}
@@ -1879,24 +1870,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
       {viewMode==="mois"&&<>
         <div className="cal-header">{JOURS_FULL.map(j=><span key={j}>{j}</span>)}</div>
         <div className="cal-grid">
-          {days.map((d,i)=>{
-            const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;
-            const dayBlocs=blocsDay(dStr);
-            const dayRdvsList=rdvsDay(d.date).sort((a,b)=>(a.heure||"").localeCompare(b.heure||""));
-            const items=[...dayBlocs.map(b=>({kind:"bloc",data:b})),...dayRdvsList.map(r=>({kind:"rdv",data:r}))];
-            const shown=items.slice(0,3);
-            const extra=items.length-shown.length;
-            return(
-              <div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}>
-                <div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>
-                {shown.map(it=>it.kind==="bloc"
-                  ?<div key={"b"+it.data.id} className="cal-chip" style={{background:"#a855f720",color:"#a855f7"}}>{blocIcon(it.data)} {it.data.titre}</div>
-                  :<div key={"r"+it.data.id} className="cal-chip">{it.data.heure} {clients.find(x=>x.id===it.data.clientId)?.nom}</div>
-                )}
-                {extra>0&&<div className="cal-more">+{extra} de plus</div>}
-              </div>
-            );
-          })}
+          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?.nom}</div>;})}</div>);})}
         </div>
       </>}
 
@@ -1905,7 +1879,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
           <div className="week-header" style={{background:"var(--surface2)",borderRight:"1px solid var(--border)"}}></div>
           {weekDays.map((d,i)=>{const dStr=ds(d),isT=dStr===todStr;return(<div key={i} className="week-header"><div className="week-header-day">{JOURS_FULL[i]}</div><div className={`week-header-date${isT?" today-c":""}`}>{d.getDate()}</div></div>);})}
           <div className="week-time-col">{HOURS.map(h=><div key={h} className="week-time-slot">{h}</div>)}</div>
-          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);const dayBlocs=blocsDay(dStr);const allDayBlocs=dayBlocs.filter(b=>b.mode==="journee"||b.mode==="plage");const timedBlocs=dayBlocs.filter(b=>b.mode==="heure"||b.mode==="apresmidi");return(<div key={di} className="week-day-col">{allDayBlocs.length>0&&<div style={{position:"absolute",top:0,left:0,right:0,zIndex:5,padding:"2px 3px"}}>{allDayBlocs.map(b=><div key={b.id} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}} style={{background:"#a855f730",border:"1px solid #a855f7",borderRadius:4,padding:"2px 4px",fontSize:"0.62rem",marginBottom:2,cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{blocIcon(b)} {b.titre}</div>)}</div>}{HOURS.map(h=><div key={h} className="week-slot" onClick={()=>{setSelected(dStr);setModalRdv({mode:"new",initial:{date:dStr,heure:h}});}}/>)}{timedBlocs.map(b=>{const startH=b.mode==="apresmidi"?"14:00":b.heureDebut;const dureeH=b.mode==="apresmidi"?4:(b.duree||1);const top=heureToPx(startH);const height=Math.max(22,dureeH*52-2);return(<div key={b.id} className="week-event" style={{top:top+1,height,background:"#a855f725",borderLeftColor:"#a855f7"}} onClick={e=>{e.stopPropagation();setModalBloc({mode:"edit",bloc:b});}}><div style={{fontWeight:700}}>{blocIcon(b)} {startH}</div><div>{b.titre}</div></div>);})}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);const height=Math.max(22,(Number(r.duree)||1)*52-2);return(<div key={r.id} className="week-event" style={{top:top+1,height}} onClick={e=>{e.stopPropagation();setModalRdv({mode:"edit",rdv:r});}}><div style={{fontWeight:700}}>{r.heure} ({r.duree||1}h)</div><div>{c?.nom}</div></div>);})}</div>);})}
+          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{HOURS.map(h=><div key={h} className="week-slot"/>)}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?.nom}</div></div>);})}</div>);})}
         </div>
       </div>}
 
@@ -1914,18 +1888,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe, 
           <div style={{fontFamily:"var(--font-head)",fontWeight:600,fontSize:"1rem"}}>📅 {fmt(selected)}</div>
           <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"new"})}>+ RDV</button>
         </div>
-        {selRdvs.length===0&&blocsDay(selected).length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
-        {blocsDay(selected).map(b=>(
-          <div key={b.id} className="rdv-row" style={{borderColor:"#a855f740"}} onClick={()=>setModalBloc({mode:"edit",bloc:b})}>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:"0.9rem"}}>{blocIcon(b)} {blocLabel(b)}</div>
-              <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{b.type}</div>
-            </div>
-            <div style={{display:"flex",gap:7,flexShrink:0}}>
-              <button className="btn btn-danger btn-sm" onClick={e=>{e.stopPropagation();if(confirm("Supprimer ce bloc ?"))setBlocsPerso(p=>p.filter(x=>x.id!==b.id));}}>🗑️</button>
-            </div>
-          </div>
-        ))}
+        {selRdvs.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun RDV ce jour</div>}
         {selRdvs.map(r=>{
           const c=clients.find(x=>x.id===r.clientId);
           const rdvDocs=docs.filter(d=>d.rdvId===r.id&&d.type!=="Mémo devis");
@@ -2246,7 +2209,7 @@ function PageRelances({clients,docs,rdvs,setRdvs}) {
   );
 }
 
-function PageSettings({societe, setSociete, allData, onImport}) {
+function PageSettings({societe, setSociete, allData, onImport, theme, setTheme}) {
   const [f,setF]=useState({...societe});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const saved=JSON.stringify(f)===JSON.stringify(societe);
@@ -2294,6 +2257,15 @@ function PageSettings({societe, setSociete, allData, onImport}) {
       <div className="form-actions">
         <button className="btn btn-primary" disabled={saved} onClick={()=>setSociete(f)}>{saved?"✓ À jour":"Enregistrer"}</button>
       </div>
+      <div style={{marginTop:24,paddingTop:20,borderTop:"1px solid var(--border)"}}>
+        <div className="card-title">🎨 Affichage</div>
+        <p style={{fontSize:"0.82rem",color:"var(--muted)",marginBottom:16}}>Le mode clair se lit mieux dehors, le mode sombre fatigue moins les yeux le soir.</p>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <button className={`btn ${theme==="clair"?"btn-primary":"btn-secondary"}`} onClick={()=>setTheme("clair")}>☀️ Clair</button>
+          <button className={`btn ${theme==="sombre"?"btn-primary":"btn-secondary"}`} onClick={()=>setTheme("sombre")}>🌙 Sombre</button>
+        </div>
+      </div>
+
       <div style={{marginTop:24,paddingTop:20,borderTop:"1px solid var(--border)"}}>
         <div className="card-title">💾 Sauvegarde des données</div>
         <p style={{fontSize:"0.82rem",color:"var(--muted)",marginBottom:16}}>Exportez régulièrement vos données pour les sauvegarder sur votre PC ou Google Drive.</p>
@@ -2351,8 +2323,14 @@ export default function App() {
   const [devis,setDevis]=useState([]);
   const [catalogue,setCatalogue]=useState(INIT_CATALOGUE);
   const [societe,setSociete]=useState(INIT_SOCIETE);
-  const [blocsPerso,setBlocsPerso]=useState([]);
   const [loaded,setLoaded]=useState(false);
+  const [theme,setTheme]=useState(()=>{ try{ return localStorage.getItem("theme")||"clair"; }catch{ return "clair"; } });
+
+  // Application du thème
+  useEffect(()=>{
+    document.body.classList.toggle("theme-dark", theme==="sombre");
+    try{ localStorage.setItem("theme",theme); }catch{}
+  },[theme]);
 
   // Chargement initial Firebase
   useEffect(()=>{
@@ -2363,7 +2341,6 @@ export default function App() {
       const dv=await charger("devis"); if(dv) setDevis(dv);
       const s=await charger("societe"); if(s) setSociete(s);
       const cat=await charger("catalogue"); if(cat) setCatalogue(cat);
-      const bp=await charger("blocsPerso"); if(bp) setBlocsPerso(bp);
       setLoaded(true);
     };
     load();
@@ -2371,12 +2348,12 @@ export default function App() {
 
   // Sauvegarde auto — seulement après chargement complet
   useEffect(()=>{ if(loaded) sauvegarder("clients",clients); },[clients]);
+  useEffect(()=>{ clients.forEach(c=>(c.equipements||[]).forEach(e=>{ addMarquePerso(e.marque); addMarquePerso(e.marqueClim); addMarquePerso(e.marquePac); })); },[clients]);
   useEffect(()=>{ if(loaded) sauvegarder("rdvs",rdvs); },[rdvs]);
   useEffect(()=>{ if(loaded) sauvegarder("docs",docs); },[docs]);
   useEffect(()=>{ if(loaded) sauvegarder("devis",devis); },[devis]);
   useEffect(()=>{ if(loaded) sauvegarder("societe",societe); },[societe]);
   useEffect(()=>{ if(loaded) sauvegarder("catalogue",catalogue); },[catalogue]);
-  useEffect(()=>{ if(loaded) sauvegarder("blocsPerso",blocsPerso); },[blocsPerso]);
 
   if(!loggedIn) return <><style>{CSS}</style><LoginScreen onLogin={()=>setLoggedIn(true)}/></>;
 
@@ -2409,12 +2386,12 @@ export default function App() {
             <div style={{fontSize:"0.8rem",color:"var(--muted)"}}>{societe.nom}</div>
           </div>
           {page==="dashboard"&&<PageDashboard clients={clients} rdvs={rdvs} docs={docs} setDocs={setDocs}/>}
-          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue} societe={societe} blocsPerso={blocsPerso} setBlocsPerso={setBlocsPerso}/>}
+          {page==="agenda"&&<PageAgenda rdvs={rdvs} setRdvs={setRdvs} clients={clients} docs={docs} setDocs={setDocs} catalogue={catalogue} societe={societe}/>}
           {page==="clients"&&<PageClients clients={clients} setClients={setClients} docs={docs} setDocs={setDocs} rdvs={rdvs} societe={societe}/>}
           {page==="devis"&&<PageDevisFactures clients={clients} docs={docs} setDocs={setDocs} devis={devis} setDevis={setDevis} societe={societe} catalogue={catalogue} setCatalogue={setCatalogue}/>}
           {page==="relances"&&<PageRelances clients={clients} docs={docs} rdvs={rdvs} setRdvs={setRdvs}/>}
           {page==="documents"&&<PageDocuments docs={docs} setDocs={setDocs} clients={clients} societe={societe}/>}
-          {page==="settings"&&<PageSettings societe={societe} setSociete={setSociete} allData={{clients,rdvs,docs,devis,catalogue,societe,blocsPerso}} onImport={data=>{if(data.clients)setClients(data.clients);if(data.rdvs)setRdvs(data.rdvs);if(data.docs)setDocs(data.docs);if(data.devis)setDevis(data.devis);if(data.catalogue)setCatalogue(data.catalogue);if(data.societe)setSociete(data.societe);if(data.blocsPerso)setBlocsPerso(data.blocsPerso);alert("✓ Sauvegarde importée avec succès !");}}/>}
+          {page==="settings"&&<PageSettings societe={societe} setSociete={setSociete} theme={theme} setTheme={setTheme} allData={{clients,rdvs,docs,devis,catalogue,societe}} onImport={data=>{if(data.clients)setClients(data.clients);if(data.rdvs)setRdvs(data.rdvs);if(data.docs)setDocs(data.docs);if(data.devis)setDevis(data.devis);if(data.catalogue)setCatalogue(data.catalogue);if(data.societe)setSociete(data.societe);alert("✓ Sauvegarde importée avec succès !");}}/>}
         </div>
         <nav className="mobile-nav">
           <div className="mobile-nav-inner">
