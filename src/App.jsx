@@ -484,7 +484,7 @@ function DocWrapper({title, onClose, onMail, children}) {
       await new Promise(r => setTimeout(r, 300));
 
       const canvas = await window.html2canvas(wrapper, {
-        scale: 2,
+        scale: 4,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
