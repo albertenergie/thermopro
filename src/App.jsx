@@ -439,82 +439,90 @@ function SignaturePad({label, onSave, existingSig}) {
   );
 }
 
-function DocWrapper({title, onClose, onMail, children}) {
+function DocWrapper({title, onClose, mailInfo, children}) {
   const ref = useRef(null);
   const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  // Génère le PDF (html2canvas + jsPDF) et retourne l'objet jsPDF, sans le sauvegarder.
+  // Réutilisé à la fois pour le téléchargement et pour l'envoi par mail.
+  const buildPdf = async () => {
+    await Promise.all([
+      new Promise(resolve => {
+        if(window.html2canvas){resolve();return;}
+        const s=document.createElement("script");
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+        s.onload=resolve; document.head.appendChild(s);
+      }),
+      new Promise(resolve => {
+        if(window.jspdf){resolve();return;}
+        const s=document.createElement("script");
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        s.onload=resolve; document.head.appendChild(s);
+      })
+    ]);
+
+    // Créer un conteneur A4 temporaire hors écran
+    const A4_PX = 750;
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_PX}px;background:#fff;z-index:-1;`;
+    wrapper.innerHTML = ref.current.innerHTML;
+    // Forcer les styles A4 sur la page
+    const style = document.createElement("style");
+    style.textContent = `
+      .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:24px 30px!important;font-size:7.5pt!important;}
+      .a4-g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
+      .a4-g4{display:grid!important;grid-template-columns:1fr 1fr 1fr 1fr!important;gap:8px!important;}
+      .a4-checks{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px!important;}
+      .a4-sig{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
+      .a4-comb{display:flex!important;flex-wrap:wrap!important;gap:6px!important;}
+      .a4-ci{flex:1!important;min-width:80px!important;}
+      .a4-rend{display:grid!important;grid-template-columns:1fr 1fr!important;}
+    `;
+    wrapper.appendChild(style);
+    document.body.appendChild(wrapper);
+
+    await new Promise(r => setTimeout(r, 300));
+
+    const canvas = await window.html2canvas(wrapper, {
+      scale: 4,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      width: A4_PX,
+      windowWidth: A4_PX
+    });
+
+    document.body.removeChild(wrapper);
+
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
+    const pdfW = 210; // mm
+    const pdfH = 297; // mm
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    // Hauteur en mm d'une page A4 en pixels
+    const pageHeightPx = imgW * (pdfH / pdfW);
+    let yPx = 0;
+    let page = 0;
+    while(yPx < imgH) {
+      const sliceH = Math.min(pageHeightPx, imgH - yPx);
+      const tmp = document.createElement("canvas");
+      tmp.width = imgW;
+      tmp.height = sliceH;
+      tmp.getContext("2d").drawImage(canvas, 0, yPx, imgW, sliceH, 0, 0, imgW, sliceH);
+      if(page > 0) pdf.addPage();
+      pdf.addImage(tmp.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pdfW, sliceH * pdfW / imgW);
+      yPx += sliceH;
+      page++;
+    }
+    return pdf;
+  };
 
   const handlePDF = async () => {
     setGenerating(true);
     try {
-      await Promise.all([
-        new Promise(resolve => {
-          if(window.html2canvas){resolve();return;}
-          const s=document.createElement("script");
-          s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-          s.onload=resolve; document.head.appendChild(s);
-        }),
-        new Promise(resolve => {
-          if(window.jspdf){resolve();return;}
-          const s=document.createElement("script");
-          s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-          s.onload=resolve; document.head.appendChild(s);
-        })
-      ]);
-
-      // Créer un conteneur A4 temporaire hors écran
-      const A4_PX = 750;
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_PX}px;background:#fff;z-index:-1;`;
-      wrapper.innerHTML = ref.current.innerHTML;
-      // Forcer les styles A4 sur la page
-      const style = document.createElement("style");
-      style.textContent = `
-        .a4page{width:${A4_PX}px!important;max-width:${A4_PX}px!important;padding:24px 30px!important;font-size:7.5pt!important;}
-        .a4-g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
-        .a4-g4{display:grid!important;grid-template-columns:1fr 1fr 1fr 1fr!important;gap:8px!important;}
-        .a4-checks{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5px!important;}
-        .a4-sig{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
-        .a4-comb{display:flex!important;flex-wrap:wrap!important;gap:6px!important;}
-        .a4-ci{flex:1!important;min-width:80px!important;}
-        .a4-rend{display:grid!important;grid-template-columns:1fr 1fr!important;}
-      `;
-      wrapper.appendChild(style);
-      document.body.appendChild(wrapper);
-
-      await new Promise(r => setTimeout(r, 300));
-
-      const canvas = await window.html2canvas(wrapper, {
-        scale: 4,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: A4_PX,
-        windowWidth: A4_PX
-      });
-
-      document.body.removeChild(wrapper);
-
-      const {jsPDF} = window.jspdf;
-      const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-      const pdfW = 210; // mm
-      const pdfH = 297; // mm
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      // Hauteur en mm d'une page A4 en pixels
-      const pageHeightPx = imgW * (pdfH / pdfW);
-      let yPx = 0;
-      let page = 0;
-      while(yPx < imgH) {
-        const sliceH = Math.min(pageHeightPx, imgH - yPx);
-        const tmp = document.createElement("canvas");
-        tmp.width = imgW;
-        tmp.height = sliceH;
-        tmp.getContext("2d").drawImage(canvas, 0, yPx, imgW, sliceH, 0, 0, imgW, sliceH);
-        if(page > 0) pdf.addPage();
-        pdf.addImage(tmp.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pdfW, sliceH * pdfW / imgW);
-        yPx += sliceH;
-        page++;
-      }
+      const pdf = await buildPdf();
       const nom = title.replace(/[^a-zA-Z0-9]/g, "-");
       pdf.save(`${nom}.pdf`);
     } catch(e) {
@@ -523,13 +531,44 @@ function DocWrapper({title, onClose, onMail, children}) {
     setGenerating(false);
   };
 
+  // Génère le PDF puis l'envoie automatiquement par mail via l'API serveur (Resend),
+  // avec le PDF en pièce jointe, depuis contact@albertenergie.fr.
+  const handleMailSend = async () => {
+    if(!mailInfo?.to) { alert("Aucune adresse email enregistrée pour ce client."); return; }
+    setSending(true);
+    try {
+      const pdf = await buildPdf();
+      const pdfBase64 = pdf.output("datauristring").split(",")[1];
+      const nom = title.replace(/[^a-zA-Z0-9]/g, "-");
+      const response = await fetch("/api/send-mail", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          to: mailInfo.to,
+          subject: mailInfo.subject,
+          body: mailInfo.body,
+          pdfBase64,
+          filename: `${nom}.pdf`
+        })
+      });
+      const data = await response.json();
+      if(!response.ok || data.error) throw new Error(data.error || "Erreur d'envoi");
+      alert("✓ Email envoyé à " + mailInfo.to);
+    } catch(e) {
+      alert("Erreur envoi mail : " + e.message);
+    }
+    setSending(false);
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal modal-xl">
         <div className="no-print" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <span className="modal-title" style={{marginBottom:0}}>{title}</span>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {onMail&&<button className="btn btn-mail btn-sm" onClick={onMail}>✉️ Mail</button>}
+            {mailInfo&&<button className="btn btn-mail btn-sm" onClick={handleMailSend} disabled={sending}>
+              {sending ? "⏳ Envoi..." : "✉️ Envoyer par mail"}
+            </button>}
             <button className="btn btn-primary btn-sm" onClick={handlePDF} disabled={generating}>
               {generating ? "⏳ Génération..." : "📄 PDF / Imprimer"}
             </button>
@@ -604,7 +643,7 @@ function DocDevis({doc, client, societe, onClose, onTransform}) {
   const ttc=(doc.lignes||[]).reduce((s,l)=>s+Number(l.qte)*Number(l.pu)*(1+Number(l.tva||10)/100),0);
   const mailBody=`Bonjour ${client?.prenom} ${client?.nom},\n\nVotre devis N° ${doc.numero} du ${fmt(doc.date)} d'un montant de ${money(ttc)} TTC.\nValidité : ${fmt(doc.validite)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}\n${societe.tel}`;
   return (
-    <DocWrapper title="Devis" onClose={onClose} onMail={client?.email?()=>sendMail(client.email,`Devis ${doc.numero} — ${societe.nom}`,mailBody):null}>
+    <DocWrapper title="Devis" onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Devis ${doc.numero} — ${societe.nom}`,body:mailBody}:null}>
       <div className="no-print" style={{marginBottom:12}}>
         {doc.statut==="Accepté"?<span className="badge badge-success" style={{fontSize:"0.85rem",padding:"6px 14px"}}>✓ Accepté</span>:doc.statut==="Refusé"?<span className="badge badge-danger" style={{fontSize:"0.85rem",padding:"6px 14px"}}>✗ Refusé</span>:<span className="badge badge-warning" style={{fontSize:"0.85rem",padding:"6px 14px"}}>En attente</span>}
         {doc.statut!=="Refusé"&&doc.statut!=="Facturé"&&onTransform&&<button className="btn btn-primary btn-sm" style={{marginLeft:10}} onClick={onTransform}>🧾 → Facture</button>}
@@ -629,7 +668,7 @@ function DocFacture({doc, client, societe, onClose}) {
   const totalTTC=totalHT+totalTVA;
   const mailBody=`Bonjour ${client?.prenom} ${client?.nom},\n\nVotre facture N° ${doc.numero} du ${fmt(doc.date)} d'un montant de ${money(totalTTC)} TTC.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`;
   return (
-    <DocWrapper title="Facture" onClose={onClose} onMail={client?.email?()=>sendMail(client.email,`Facture ${doc.numero} — ${societe.nom}`,mailBody):null}>
+    <DocWrapper title="Facture" onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Facture ${doc.numero} — ${societe.nom}`,body:mailBody}:null}>
       <div className="doc-preview">
         <DocEntete societe={societe} client={client} type="FACTURE" numero={doc.numero} date={doc.date} dateEcheance={doc.dateEcheance}/>
         {doc.objet&&<div style={{marginBottom:12,fontSize:12}}><strong>Objet :</strong> {doc.objet}</div>}
@@ -669,7 +708,7 @@ function DocBon({doc, client, societe, onClose}) {
     .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title="Bon d'intervention" onClose={onClose} onMail={()=>sendMail(client?.email||"",`Bon d'intervention ${doc.numero} — ${societe.nom}`,`Bonjour,\n\nVeuillez trouver ci-joint votre bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`,societe.email)}>
+    <DocWrapper title="Bon d'intervention" onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Bon d'intervention ${doc.numero} — ${societe.nom}`,body:`Bonjour,\n\nVeuillez trouver ci-joint votre bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`}:null}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
@@ -740,7 +779,8 @@ function DocBon({doc, client, societe, onClose}) {
           <div className="a4-sig-box">
             <div className="a4-sig-label">Signature et cachet du client</div>
             {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:50,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
-            <div className="a4-sig-line">Bon pour accord</div>
+            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
+            <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
         <div className="a4-footer">{societe.nom} — SIRET {societe.siret} — APE 4322B — {societe.tel} — {societe.email}</div>
@@ -801,7 +841,7 @@ function DocAttestation({doc, client, societe, onClose}) {
     .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 5px;font-size:6.5pt;font-weight:700;}
   `;
   return (
-    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} onMail={()=>sendMail(client?.email||"",`Attestation d'entretien ${doc.numero} — ${societe.nom}`,`Bonjour,\n\nVeuillez trouver ci-joint votre attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`,societe.email)}>
+    <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Attestation d'entretien ${doc.numero} — ${societe.nom}`,body:`Bonjour,\n\nVeuillez trouver ci-joint votre attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`}:null}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
