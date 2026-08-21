@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -28,6 +28,31 @@ async function charger(col) {
     if(d.exists()) return JSON.parse(d.data().value);
   } catch(e) { console.error("Erreur chargement:", e); }
   return null;
+}
+
+// --- Stockage dédié pour "docs" (bons, attestations, factures...) ---
+// Chaque document est stocké individuellement (sous-collection docsItems)
+// au lieu d'un seul bloc géant, pour ne jamais dépasser la limite de 1 Mo
+// par document Firestore (les signatures en image font grossir le bloc).
+async function sauvegarderDocs(docsArray, previousIds) {
+  try {
+    const currentIds = new Set(docsArray.map(d=>String(d.id)));
+    await Promise.all(docsArray.map(d=>
+      setDoc(doc(db,"thermopro",USER_ID,"docsItems",String(d.id)), d).catch(e=>console.error("Erreur sauvegarde doc",d.id,e))
+    ));
+    const toDelete=[...previousIds].filter(id=>!currentIds.has(id));
+    await Promise.all(toDelete.map(id=>
+      deleteDoc(doc(db,"thermopro",USER_ID,"docsItems",id)).catch(()=>{})
+    ));
+    return currentIds;
+  } catch(e) { console.error("Erreur sauvegarde docs:", e); return previousIds; }
+}
+
+async function chargerDocsItems() {
+  try {
+    const snap = await getDocs(collection(db,"thermopro",USER_ID,"docsItems"));
+    return snap.docs.map(d=>d.data());
+  } catch(e) { console.error("Erreur chargement docs:", e); return []; }
 }
 
 const CSS = `
@@ -2365,6 +2390,7 @@ export default function App() {
   const [societe,setSociete]=useState(INIT_SOCIETE);
   const [loaded,setLoaded]=useState(false);
   const [theme,setTheme]=useState(()=>{ try{ return localStorage.getItem("theme")||"clair"; }catch{ return "clair"; } });
+  const docsIdsRef=useRef(new Set());
 
   // Application du thème
   useEffect(()=>{
@@ -2377,7 +2403,19 @@ export default function App() {
     const load=async()=>{
       const c=await charger("clients"); if(c) setClients(c);
       const r=await charger("rdvs"); if(r) setRdvs(r);
-      const d=await charger("docs"); if(d) setDocs(d);
+      const newDocs=await chargerDocsItems();
+      if(newDocs && newDocs.length>0){
+        setDocs(newDocs);
+        docsIdsRef.current=new Set(newDocs.map(x=>String(x.id)));
+      } else {
+        // Migration : anciens documents stockés en un seul bloc
+        const oldDocs=await charger("docs");
+        if(oldDocs && oldDocs.length>0){
+          setDocs(oldDocs);
+          docsIdsRef.current=new Set(oldDocs.map(x=>String(x.id)));
+          sauvegarderDocs(oldDocs, new Set()); // migration silencieuse vers le nouveau format
+        }
+      }
       const dv=await charger("devis"); if(dv) setDevis(dv);
       const s=await charger("societe"); if(s) setSociete(s);
       const cat=await charger("catalogue"); if(cat) setCatalogue(cat);
@@ -2390,7 +2428,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) sauvegarder("clients",clients); },[clients]);
   useEffect(()=>{ clients.forEach(c=>(c.equipements||[]).forEach(e=>{ addMarquePerso(e.marque); addMarquePerso(e.marqueClim); addMarquePerso(e.marquePac); })); },[clients]);
   useEffect(()=>{ if(loaded) sauvegarder("rdvs",rdvs); },[rdvs]);
-  useEffect(()=>{ if(loaded) sauvegarder("docs",docs); },[docs]);
+  useEffect(()=>{ if(loaded) sauvegarderDocs(docs, docsIdsRef.current).then(ids=>{ docsIdsRef.current=ids; }); },[docs]);
   useEffect(()=>{ if(loaded) sauvegarder("devis",devis); },[devis]);
   useEffect(()=>{ if(loaded) sauvegarder("societe",societe); },[societe]);
   useEffect(()=>{ if(loaded) sauvegarder("catalogue",catalogue); },[catalogue]);
