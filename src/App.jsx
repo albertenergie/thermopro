@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
+import { initializeFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -13,7 +13,10 @@ const firebaseConfig = {
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
+// ignoreUndefinedProperties : évite que Firestore rejette silencieusement
+// l'enregistrement d'un document dès qu'un champ optionnel (ex: montant encaissé
+// non rempli) vaut "undefined" — c'était la cause probable des documents perdus.
+const db = initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
 const USER_ID = "pierre";
 
 async function sauvegarder(col, data) {
@@ -37,13 +40,15 @@ async function charger(col) {
 async function sauvegarderDocs(docsArray, previousIds) {
   try {
     const currentIds = new Set(docsArray.map(d=>String(d.id)));
+    const echecs=[];
     await Promise.all(docsArray.map(d=>
-      setDoc(doc(db,"thermopro",USER_ID,"docsItems",String(d.id)), d).catch(e=>console.error("Erreur sauvegarde doc",d.id,e))
+      setDoc(doc(db,"thermopro",USER_ID,"docsItems",String(d.id)), d).catch(e=>{console.error("Erreur sauvegarde doc",d.id,e); echecs.push(d);})
     ));
     const toDelete=[...previousIds].filter(id=>!currentIds.has(id));
     await Promise.all(toDelete.map(id=>
       deleteDoc(doc(db,"thermopro",USER_ID,"docsItems",id)).catch(()=>{})
     ));
+    if(echecs.length>0) alert(`⚠️ ${echecs.length} document(s) n'ont pas pu être sauvegardés en ligne. Vérifiez votre connexion et réessayez (ne fermez pas l'appli).`);
     return currentIds;
   } catch(e) { console.error("Erreur sauvegarde docs:", e); return previousIds; }
 }
@@ -261,7 +266,7 @@ const todayStr = () => TODAY.toISOString().slice(0,10);
 const ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const JOURS_FULL = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-const HOURS = Array.from({length:14},(_,i)=>`${String(i+7).padStart(2,"0")}:00`);
+const HOURS = Array.from({length:16},(_,i)=>`${String(i+7).padStart(2,"0")}:00`);
 
 function getDays(y,m){
   const days=[]; let dow=new Date(y,m,1).getDay(); dow=dow===0?6:dow-1;
@@ -1283,7 +1288,7 @@ function ScannerOCR({onResult, onClose, equip}) {
 
 function EquipForm({equip, onChange, onDelete, index}) {
   const s=(k,v)=>onChange({...equip,[k]:v});
-  const [showScanner,setShowScanner]=useState(false);
+  const [scanTarget,setScanTarget]=useState(null); // null | "ext" | {idx:n} (unité intérieure n)
   const isClim=equip.type==="Climatisation";
   const isPac=equip.type==="Pompe à chaleur";
   const isFioul=equip.type==="Chaudière fioul";
@@ -1291,20 +1296,27 @@ function EquipForm({equip, onChange, onDelete, index}) {
   const isChaud=isGaz||isFioul;
 
   const handleScanResult=res=>{
-    setShowScanner(false);
-    if(isClim){ onChange({...equip,marqueClim:res.marque||equip.marqueClim,modeleExt:res.modele||equip.modeleExt,numSerieExt:res.numSerie||equip.numSerieExt,puissanceClim:res.puissance||equip.puissanceClim,fluideClim:res.fluide||equip.fluideClim}); }
+    const target=scanTarget;
+    setScanTarget(null);
+    if(isClim&&target&&typeof target==="object"){
+      const u=[...(equip.unitesInt||[])];
+      const i=target.idx;
+      u[i]={...u[i],modele:res.modele||u[i]?.modele,numSerie:res.numSerie||u[i]?.numSerie,puissance:res.puissance||u[i]?.puissance};
+      onChange({...equip,unitesInt:u});
+    }
+    else if(isClim){ onChange({...equip,marqueClim:res.marque||equip.marqueClim,modeleExt:res.modele||equip.modeleExt,numSerieExt:res.numSerie||equip.numSerieExt,puissanceClim:res.puissance||equip.puissanceClim,fluideClim:res.fluide||equip.fluideClim}); }
     else if(isPac){ onChange({...equip,marquePac:res.marque||equip.marquePac,modelePac:res.modele||equip.modelePac,numSeriePac:res.numSerie||equip.numSeriePac,puissancePac:res.puissance||equip.puissancePac}); }
     else{ onChange({...equip,marque:res.marque||equip.marque,modele:res.modele||equip.modele,numSerie:res.numSerie||equip.numSerie,puissance:res.puissance||equip.puissance}); }
   };
 
   return (
     <>
-    {showScanner&&<ScannerOCR equip={equip} onResult={handleScanResult} onClose={()=>setShowScanner(false)}/>}
+    {scanTarget!==null&&<ScannerOCR equip={equip} onResult={handleScanResult} onClose={()=>setScanTarget(null)}/>}
     <div style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:"0.85rem",color:"var(--accent)"}}>{EQUIP_ICON(equip.type)} Équipement {index+1} — {equip.type}</div>
         <div style={{display:"flex",gap:6}}>
-          <button className="btn btn-secondary btn-sm" onClick={()=>setShowScanner(true)}>📷 Scanner</button>
+          {!isClim&&<button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>}
           <button className="btn btn-danger btn-sm" onClick={onDelete}>🗑️</button>
         </div>
       </div>
@@ -1323,7 +1335,10 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </select>
           </div>
           <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
-            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>
+            </div>
             <div className="form-grid">
               <div className="form-group"><label>Marque</label><MarqueInput value={equip.marqueClim} onChange={v=>s("marqueClim",v)} options={MARQUES_CLIM} listId="dl-marque-clim"/></div>
               <div className="form-group"><label>Modèle</label><input value={equip.modeleExt||""} onChange={e=>s("modeleExt",e.target.value)}/></div>
@@ -1335,7 +1350,10 @@ function EquipForm({equip, onChange, onDelete, index}) {
           </div>
           {(equip.unitesInt||[{emplacement:"",modele:"",numSerie:"",puissance:""}]).map((ui,i)=>(
             <div key={i} className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
-              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
+                <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget({idx:i})}>📷 Scanner</button>
+              </div>
               <div className="form-grid">
                 <div className="form-group"><label>Emplacement / Pièce</label><input value={ui.emplacement||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],emplacement:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
                 <div className="form-group"><label>Modèle</label><input value={ui.modele||""} onChange={e=>{const u=[...(equip.unitesInt||[])];u[i]={...u[i],modele:e.target.value};onChange({...equip,unitesInt:u});}}/></div>
@@ -1925,7 +1943,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
                   </div>
                 </div>
               ))}
-              {nowPx!==null&&nowPx>0&&nowPx<14*64&&<div style={{position:"absolute",left:52,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-6,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
+              {nowPx!==null&&nowPx>0&&nowPx<16*64&&<div style={{position:"absolute",left:52,right:0,top:nowPx,height:2,background:"var(--danger)",zIndex:10,pointerEvents:"none"}}><div style={{position:"absolute",left:-6,top:-4,width:10,height:10,borderRadius:"50%",background:"var(--danger)"}}/></div>}
             </div>
             {dayRdvs.length===0&&<div className="empty" style={{marginTop:14}}><div className="icon">📅</div><p>Aucun RDV ce jour</p></div>}
           </div>
