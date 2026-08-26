@@ -196,24 +196,29 @@ const CSS = `
   .sig-container{border:2px dashed var(--border);border-radius:12px;overflow:hidden;position:relative;background:#f8fafc;touch-action:none;}
   .sig-container.active{border-color:var(--accent);}
   .sig-label{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:0.72rem;color:#aaa;pointer-events:none;white-space:nowrap;}
-  .doc-preview{background:#fff;color:#1a1a2e;border-radius:12px;padding:38px 42px;font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.6;max-width:780px;margin:0 auto;box-shadow:0 8px 48px #00000040;}
-  .doc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #f97316;}
-  .doc-company-name{font-size:22px;font-family:'Fraunces',serif;font-weight:900;color:#f97316;}
-  .doc-company-info{font-size:10px;color:#666;margin-top:4px;line-height:1.8;}
-  .doc-ref-type{font-size:18px;font-family:'Fraunces',serif;font-weight:900;color:#1a1a2e;text-align:right;}
-  .doc-ref-info{font-size:10.5px;color:#888;text-align:right;margin-top:3px;}
-  .doc-section-title{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#aaa;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #eee;}
+  .doc-preview{background:#fff;color:#1f2430;border-radius:12px;padding:16mm 18mm;font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.6;max-width:210mm;margin:0 auto;box-shadow:0 8px 48px #00000040;}
+  .doc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #1c3358;}
+  .doc-head-left{display:flex;align-items:center;gap:16px;}
+  .doc-company-name{font-size:20px;font-family:'DM Sans',sans-serif;font-weight:800;color:#1c3358;}
+  .doc-company-info{font-size:10px;color:#5b6270;margin-top:4px;line-height:1.8;}
+  .doc-ref-type{font-size:11px;color:#5b6270;text-align:right;}
+  .doc-ref-info{font-size:10.5px;color:#5b6270;text-align:right;margin-top:3px;}
+  .doc-ref-info b{color:#1c3358;}
+  .doc-title-bar{background:linear-gradient(90deg,#1c3358 0%,#1c3358 60%,#f2822c 100%);color:#fff;text-align:center;padding:10px 0;font-size:15px;font-weight:700;letter-spacing:1.6px;border-radius:6px;margin-bottom:16px;}
+  .doc-section-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1c3358;margin-bottom:8px;padding-bottom:4px;display:flex;align-items:center;gap:5px;}
+  .doc-section-title::before{content:"";width:6px;height:6px;border-radius:50%;background:#f2822c;display:inline-block;}
   .doc-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
   .doc-field{display:flex;flex-direction:column;margin-bottom:5px;}
-  .doc-field-label{font-size:9.5px;color:#aaa;text-transform:uppercase;letter-spacing:.06em;}
-  .doc-field-value{font-size:11.5px;font-weight:600;border-bottom:1px dotted #ddd;padding-bottom:2px;margin-top:2px;min-height:18px;}
+  .doc-field-label{font-size:9.5px;color:#8b909b;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+  .doc-field-value{font-size:11.5px;font-weight:600;border-bottom:1px solid #c9cdd6;padding-bottom:2px;margin-top:2px;min-height:18px;}
   .doc-items{width:100%;border-collapse:collapse;margin:10px 0;}
-  .doc-items th{background:#1a1a2e;color:#fff;padding:7px 10px;font-size:9.5px;text-align:left;}
-  .doc-items td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:11px;}
+  .doc-items th{background:#1c3358;color:#fff;padding:7px 10px;font-size:9.5px;text-align:left;}
+  .doc-items td{padding:7px 10px;border-bottom:1px solid #c9cdd6;font-size:11px;}
   .doc-sig-row{display:flex;gap:16px;margin-top:20px;}
-  .doc-sig-box{flex:1;border:1px solid #ddd;border-radius:7px;padding:10px 14px;text-align:center;}
-  .doc-sig-box p{font-size:9.5px;color:#aaa;margin-bottom:5px;}
-  .doc-footer{border-top:1px solid #eee;padding-top:10px;margin-top:16px;font-size:9px;color:#bbb;text-align:center;line-height:1.9;}
+  .doc-sig-box{flex:1;border:1px solid #c9cdd6;border-radius:7px;padding:10px 14px;text-align:center;min-height:70px;}
+  .doc-sig-box p{font-size:9.5px;color:#1c3358;font-weight:700;text-transform:uppercase;margin-bottom:5px;}
+  .doc-iban{font-size:10px;color:#5b6270;margin-top:10px;}.doc-iban b{color:#1c3358;}
+  .doc-footer{border-top:1px solid #c9cdd6;padding-top:10px;margin-top:16px;font-size:9px;color:#8b909b;text-align:center;line-height:1.9;}
   .doc-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;}
   .doc-check-item{display:flex;align-items:center;gap:5px;font-size:10px;}
   .doc-check-box{width:12px;height:12px;border:1.5px solid #ccc;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0;}
@@ -632,10 +637,10 @@ function DocLignes({lignes}) {
       <div style={{display:"flex",justifyContent:"flex-end",gap:32,marginTop:8}}>
         <div style={{minWidth:260}}>
           {Object.values(tvaMap).map(t=>(
-            <div key={t.taux} style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:11,marginBottom:3}}><span style={{color:"#888"}}>TVA {t.taux}%</span><span>{money(t.tva)}</span></div>
+            <div key={t.taux} style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:11,marginBottom:3}}><span style={{color:"#8b909b"}}>TVA {t.taux}%</span><span>{money(t.tva)}</span></div>
           ))}
-          <div style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:11,marginBottom:3,paddingTop:4,borderTop:"1px solid #eee"}}><span style={{color:"#888"}}>Total HT</span><span>{money(totalHT)}</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:14,fontWeight:700,color:"#f97316",paddingTop:6,borderTop:"2px solid #f97316",marginTop:4}}><span>Total TTC</span><span>{money(totalTTC)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:11,marginBottom:3,paddingTop:4,borderTop:"1px solid #c9cdd6"}}><span style={{color:"#8b909b"}}>Total HT</span><span>{money(totalHT)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:24,fontSize:14,fontWeight:700,color:"#f2822c",paddingTop:6,borderTop:"2px solid #1c3358",marginTop:4}}><span>Total TTC</span><span>{money(totalTTC)}</span></div>
         </div>
       </div>
     </>
@@ -646,24 +651,26 @@ function DocEntete({societe, client, type, numero, date, dateEcheance, validite}
   return (
     <>
       <div className="doc-head">
-        <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
-          {societe.logo&&<img src={societe.logo} alt="Logo" style={{height:64,maxWidth:140,objectFit:"contain",flexShrink:0}}/>}
+        <div className="doc-head-left">
+          {societe.logo?<img src={societe.logo} alt="Logo" style={{height:64,maxWidth:130,objectFit:"contain",flexShrink:0}}/>:<div style={{fontSize:22,fontWeight:800,color:"#1c3358"}}>🔥 {societe.nom}</div>}
           <div>
             <div className="doc-company-name">{societe.nom}</div>
             <div className="doc-company-info">{societe.adresse}<br/>Tél : {societe.tel} · {societe.email}<br/>SIRET : {societe.siret}</div>
           </div>
         </div>
         <div style={{textAlign:"right"}}>
-          <div className="doc-ref-type">{type}</div>
-          <div className="doc-ref-info">N° {numero}</div>
+          <div className="doc-ref-info">N° <b>{numero}</b></div>
           <div className="doc-ref-info">Date : {fmt(date)}</div>
           {dateEcheance&&<div className="doc-ref-info">Échéance : {fmt(dateEcheance)}</div>}
           {validite&&<div className="doc-ref-info">Validité : {fmt(validite)}</div>}
         </div>
       </div>
+      <div className="doc-title-bar">{type}</div>
       <div className="doc-2col" style={{marginBottom:16}}>
-        <div><h4>Émetteur</h4><strong>{societe.nom}</strong><br/>{societe.adresse}<br/>SIRET : {societe.siret}</div>
-        <div><h4>Client</h4><strong>{client?.prenom} {client?.nom}</strong><br/>{fullAddr(client)}<br/>{client?.tel}</div>
+        <div className="doc-section-title">Émetteur</div>
+        <div className="doc-section-title">Client</div>
+        <div style={{marginTop:-10}}><strong>{societe.nom}</strong><br/>{societe.adresse}<br/>SIRET : {societe.siret}</div>
+        <div style={{marginTop:-10}}><strong>{client?.prenom} {client?.nom}</strong><br/>{fullAddr(client)}<br/>{client?.tel}</div>
       </div>
     </>
   );
@@ -683,8 +690,8 @@ function DocDevis({doc, client, societe, onClose, onTransform}) {
         {doc.objet&&<div style={{marginBottom:12,fontSize:12}}><strong>Objet :</strong> {doc.objet}</div>}
         <DocLignes lignes={doc.lignes||[]}/>
         <div className="doc-sig-row">
-          <div className="doc-sig-box"><p>Signature entreprise</p><div style={{height:60,borderBottom:"1px solid #ddd"}}/></div>
-          <div className="doc-sig-box"><p>Bon pour accord — client</p><div style={{height:60,borderBottom:"1px solid #ddd"}}/></div>
+          <div className="doc-sig-box"><p>Signature entreprise</p><div style={{height:60,borderBottom:"1px solid #c9cdd6"}}/></div>
+          <div className="doc-sig-box"><p>Bon pour accord — client</p><div style={{height:60,borderBottom:"1px solid #c9cdd6"}}/></div>
         </div>
         <div className="doc-footer">{societe.nom} — SIRET {societe.siret} — {societe.tel} — {societe.email}</div>
       </div>
@@ -703,10 +710,11 @@ function DocFacture({doc, client, societe, onClose}) {
         <DocEntete societe={societe} client={client} type="FACTURE" numero={doc.numero} date={doc.date} dateEcheance={doc.dateEcheance}/>
         {doc.objet&&<div style={{marginBottom:12,fontSize:12}}><strong>Objet :</strong> {doc.objet}</div>}
         <DocLignes lignes={doc.lignes||[]}/>
-        <div style={{marginTop:12,fontSize:11,color:"#555"}}>Paiement à réception · {doc.modePaiement||"Chèque, Virement, Espèces, Carte bancaire"}</div>
+        <div style={{marginTop:12,fontSize:11,color:"#5b6270"}}>Paiement à réception · {doc.modePaiement||"Chèque, Virement, Espèces, Carte bancaire"}</div>
+        {societe.iban&&<div className="doc-iban"><b>IBAN — {societe.nom} :</b> {societe.iban}</div>}
         <div className="doc-sig-row" style={{marginTop:16}}>
-          <div className="doc-sig-box"><p>Signature technicien</p>{doc.sigTech?<img src={doc.sigTech} alt="sig" style={{height:55}}/>:<div style={{height:55,borderBottom:"1px solid #ddd"}}/>}</div>
-          <div className="doc-sig-box"><p>Acquitté — client</p>{doc.sigClient?<img src={doc.sigClient} alt="sig" style={{height:55}}/>:<div style={{height:55,borderBottom:"1px solid #ddd"}}/>}</div>
+          <div className="doc-sig-box"><p>Signature technicien</p>{doc.sigTech?<img src={doc.sigTech} alt="sig" style={{height:55}}/>:<div style={{height:55,borderBottom:"1px solid #c9cdd6"}}/>}</div>
+          <div className="doc-sig-box"><p>Acquitté — client</p>{doc.sigClient?<img src={doc.sigClient} alt="sig" style={{height:55}}/>:<div style={{height:55,borderBottom:"1px solid #c9cdd6"}}/>}</div>
         </div>
         <div className="doc-footer">{societe.nom} — SIRET {societe.siret} — {societe.tel} — {societe.email}</div>
       </div>
@@ -719,79 +727,86 @@ function DocBon({doc, client, societe, onClose}) {
   const ttc=ht*(1+(doc.tva||10)/100);
   const equip=doc.equip||{};
   const CSS_A4=`
-    .a4page{font-family:'DM Sans',sans-serif;font-size:8pt;color:#111;background:#fff;padding:11mm 13mm;max-width:210mm;margin:0 auto;}
-    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5mm;padding-bottom:3mm;border-bottom:2px solid #1a56db;}
-    .a4-company{font-size:7pt;line-height:1.6;color:#333;}.a4-company strong{font-size:9.5pt;color:#111;display:block;}
-    .a4-logo{font-size:15pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
-    .a4-title{background:#1a56db;color:#fff;text-align:center;padding:3px 0;font-size:9.5pt;font-weight:700;letter-spacing:1px;margin-bottom:4mm;border-radius:3px;}
-    .a4-sec{margin-bottom:3mm;}.a4-sec-t{font-size:7pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:2px;margin-bottom:2mm;}
-    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:3mm;}.a4-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:2mm;}
-    .a4-f{display:flex;flex-direction:column;gap:1px;}.a4-f label{font-size:6pt;color:#888;text-transform:uppercase;font-weight:600;}
-    .a4-f .v{border-bottom:1px solid #ccc;min-height:13px;font-size:7.5pt;padding:1px 2px;color:#111;font-weight:500;}
-    .a4-box{background:#f7f9ff;border:1px solid #dce8ff;border-radius:4px;padding:2.5mm;}
-    .a4-travaux{border:1px solid #ddd;border-radius:3px;padding:2mm;min-height:14mm;font-size:7.5pt;color:#333;white-space:pre-wrap;}
-    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:3mm;}
-    .a4-sig-box{border:1px solid #ddd;border-radius:4px;padding:2.5mm;min-height:18mm;display:flex;flex-direction:column;}
-    .a4-sig-label{font-size:6.5pt;color:#888;margin-bottom:2mm;font-weight:600;}
-    .a4-sig-line{margin-top:auto;border-top:1px dashed #ccc;padding-top:2px;font-size:6pt;color:#aaa;}
-    .a4-footer{margin-top:3mm;padding-top:2mm;border-top:1px solid #eee;text-align:center;font-size:6pt;color:#aaa;}
-    .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 6px;font-size:7pt;font-weight:700;}
+    :root{--ae-navy:#1c3358;--ae-orange:#f2822c;--ae-orange-soft:#fdece0;--ae-teal:#1f9d8a;--ae-grey:#5b6270;--ae-line:#c9cdd6;}
+    .a4page{font-family:'DM Sans',sans-serif;font-size:9pt;color:#1f2430;background:#fff;padding:13mm 15mm;max-width:210mm;margin:0 auto;}
+    .a4-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5mm;padding-bottom:3.5mm;border-bottom:3px solid var(--ae-navy);}
+    .a4-header-left{display:flex;align-items:center;gap:5mm;}
+    .a4-company{font-size:7.6pt;line-height:1.7;color:var(--ae-grey);}.a4-company strong{font-size:13pt;color:var(--ae-navy);display:block;letter-spacing:.2px;}
+    .a4-logo{font-size:15pt;font-weight:800;color:var(--ae-navy);line-height:1.1;text-align:right;}
+    .a4-doc-ref{text-align:right;font-size:7.6pt;color:var(--ae-grey);}.a4-doc-ref b{color:var(--ae-navy);font-size:8.8pt;}
+    .a4-title{background:linear-gradient(90deg,var(--ae-navy) 0%,var(--ae-navy) 60%,var(--ae-orange) 100%);color:#fff;text-align:center;padding:9px 0;font-size:12.5pt;font-weight:700;letter-spacing:1.6px;margin-bottom:5.5mm;border-radius:6px;}
+    .a4-sec{margin-bottom:2.8mm;}.a4-sec-t{font-size:8.1pt;font-weight:700;color:var(--ae-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2.6mm;display:flex;align-items:center;gap:5px;}
+    .a4-sec-t::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ae-orange);display:inline-block;flex-shrink:0;}
+    .a4-sec-t.plain{border-bottom:2px solid var(--ae-navy);padding-bottom:1.8mm;font-size:10.5pt;}
+    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:5mm;}.a4-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3mm;}
+    .a4-f{display:flex;flex-direction:column;gap:1.5px;margin-bottom:2.6mm;}.a4-f label{font-size:6.4pt;color:#8b909b;text-transform:uppercase;font-weight:700;}
+    .a4-f .v{border-bottom:1px solid var(--ae-line);min-height:13px;font-size:8.8pt;padding:2px 2px;color:#1f2430;font-weight:600;}
+    .a4-box{background:#fff;border:1px solid var(--ae-line);border-left:3px solid var(--ae-orange);border-radius:6px;padding:3.5mm 4.5mm;}
+    .a4-box.blue{border-left-color:var(--ae-navy);}
+    .a4-travaux{border:1px solid var(--ae-line);border-radius:6px;padding:3mm;min-height:16mm;font-size:8.4pt;color:#333;white-space:pre-wrap;line-height:1.6;}
+    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:4mm;}
+    .a4-sig-box{border:1px solid var(--ae-line);border-radius:7px;padding:4mm;min-height:30mm;display:flex;flex-direction:column;}
+    .a4-sig-label{font-size:7.6pt;color:var(--ae-navy);margin-bottom:2mm;font-weight:700;text-transform:uppercase;}
+    .a4-sig-line{margin-top:auto;border-top:1px dashed var(--ae-line);padding-top:2px;font-size:6.8pt;color:#8b909b;}
+    .a4-footer{margin-top:4mm;padding-top:3mm;border-top:1px solid var(--ae-line);text-align:center;font-size:6.8pt;color:#8b909b;}
+    .a4-badge{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:4px;padding:1px 7px;font-size:7.5pt;font-weight:700;}
   `;
   return (
     <DocWrapper title="Bon d'intervention" onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Bon d'intervention ${doc.numero} — ${societe.nom}`,body:`Bonjour,\n\nVeuillez trouver ci-joint votre bon d'intervention N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`}:null}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
-          <div className="a4-company">
-            <strong>{societe.nom}</strong>
-            {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
+          <div className="a4-header-left">
+            {societe.logo?<img src={societe.logo} alt="Logo" style={{height:78,maxWidth:150,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}
+            <div className="a4-company">
+              <strong>{societe.nom}</strong>
+              {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
+            </div>
           </div>
-          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:80,maxWidth:160,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}</div>
+          <div className="a4-doc-ref">N° document<br/><b>{doc.numero}</b></div>
         </div>
-        <div className="a4-title">BON D'INTERVENTION</div>
-        <div className="a4-g2" style={{marginBottom:"3mm"}}>
-          <div className="a4-box">
+        <div className="a4-title">{doc.typeIntervention==="Dépannage"?"BON DE DÉPANNAGE":"BON D'INTERVENTION"}</div>
+        <div className="a4-g2" style={{marginBottom:"5.5mm"}}>
+          <div className="a4-box blue">
             <div className="a4-sec-t">Intervention</div>
-            <div className="a4-g2" style={{gap:"2mm"}}>
+            <div className="a4-g2" style={{gap:"3mm"}}>
               <div className="a4-f"><label>N° Document</label><div className="v">{doc.numero}</div></div>
               <div className="a4-f"><label>Date</label><div className="v">{fmt(doc.date)}</div></div>
               <div className="a4-f"><label>Heure arrivée</label><div className="v">{doc.heureArrivee||"—"}</div></div>
               <div className="a4-f"><label>Heure départ</label><div className="v">{doc.heureDepart||"—"}</div></div>
-              <div className="a4-f" style={{gridColumn:"1/-1"}}><label>Type d'intervention</label><div className="v">{doc.typeIntervention}</div></div>
+              <div className="a4-f" style={{gridColumn:"1/-1",marginBottom:0}}><label>Type d'intervention</label><div className="v">{doc.typeIntervention}</div></div>
             </div>
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Client</div>
-            <div className="a4-f" style={{marginBottom:"2mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
-            <div className="a4-f" style={{marginBottom:"2mm"}}><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
-            <div className="a4-f"><label>Téléphone</label><div className="v">{client?.tel}</div></div>
+            <div className="a4-f"><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
+            <div className="a4-f"><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
+            <div className="a4-f" style={{marginBottom:0}}><label>Téléphone</label><div className="v">{client?.tel}</div></div>
           </div>
         </div>
-        <div className="a4-sec">
-          <div className="a4-sec-t">Équipement</div>
-          <div className="a4-g4">
-            <div className="a4-f"><label>Type</label><div className="v">{equip.type||"—"}</div></div>
-            <div className="a4-f"><label>Marque / Modèle</label><div className="v">{equip.marque||equip.marqueClim||"—"} {equip.modele||""}</div></div>
-            <div className="a4-f"><label>N° de série</label><div className="v">{equip.numSerie||equip.numSerieClim||"—"}</div></div>
-            <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||"—"}</div></div>
-            <div className="a4-f"><label>Énergie / Type</label><div className="v">{equip.gaz||equip.type||"—"}</div></div>
-            <div className="a4-f"><label>Conduit évacuation</label><div className="v">{equip.conduit||"—"}</div></div>
-            <div className="a4-f"><label>Année</label><div className="v">{equip.annee||equip.anneeClim||"—"}</div></div>
-          </div>
+        <div className="a4-sec-t plain">Équipement</div>
+        <div className="a4-g4" style={{margin:"4mm 0 5.5mm"}}>
+          <div className="a4-f"><label>Type</label><div className="v">{equip.type||"—"}</div></div>
+          <div className="a4-f"><label>Marque / Modèle</label><div className="v">{equip.marque||equip.marqueClim||"—"} {equip.modele||""}</div></div>
+          <div className="a4-f"><label>N° de série</label><div className="v">{equip.numSerie||equip.numSerieClim||"—"}</div></div>
+          <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||"—"}</div></div>
+          <div className="a4-f"><label>Énergie / Type</label><div className="v">{equip.gaz||equip.type||"—"}</div></div>
+          <div className="a4-f"><label>Conduit évacuation</label><div className="v">{equip.conduit||"—"}</div></div>
+          <div className="a4-f"><label>Année</label><div className="v">{equip.annee||equip.anneeClim||"—"}</div></div>
         </div>
-        <div className="a4-g2" style={{marginBottom:"3mm"}}>
+        <div className="a4-g2" style={{marginBottom:"5.5mm"}}>
           <div className="a4-sec"><div className="a4-sec-t">Travaux réalisés</div><div className="a4-travaux">{doc.observations||""}</div></div>
           <div className="a4-sec"><div className="a4-sec-t">Pièces changées</div><div className="a4-travaux">{doc.piecesChangees||""}</div></div>
         </div>
         {(doc.lignes||[]).length>0&&<div className="a4-sec">
           <div className="a4-sec-t">Facturation</div>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:"7.5pt"}}>
-            <thead><tr style={{background:"#1a56db",color:"#fff"}}><th style={{padding:"3px 6px",textAlign:"left"}}>Désignation</th><th style={{padding:"3px 6px"}}>Qté</th><th style={{padding:"3px 6px",textAlign:"right"}}>P.U. HT</th><th style={{padding:"3px 6px",textAlign:"right"}}>Total HT</th></tr></thead>
-            <tbody>{doc.lignes.map((l,i)=><tr key={i} style={{borderBottom:"1px solid #eee"}}><td style={{padding:"3px 6px"}}>{l.desc||l.designation}</td><td style={{padding:"3px 6px",textAlign:"center"}}>{l.qte}</td><td style={{padding:"3px 6px",textAlign:"right"}}>{money(l.pu)}</td><td style={{padding:"3px 6px",textAlign:"right"}}>{money(l.qte*l.pu)}</td></tr>)}</tbody>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:"8.4pt"}}>
+            <thead><tr style={{background:"var(--ae-navy)",color:"#fff"}}><th style={{padding:"4px 7px",textAlign:"left"}}>Désignation</th><th style={{padding:"4px 7px"}}>Qté</th><th style={{padding:"4px 7px",textAlign:"right"}}>P.U. HT</th><th style={{padding:"4px 7px",textAlign:"right"}}>Total HT</th></tr></thead>
+            <tbody>{doc.lignes.map((l,i)=><tr key={i} style={{borderBottom:"1px solid var(--ae-line)"}}><td style={{padding:"4px 7px"}}>{l.desc||l.designation}</td><td style={{padding:"4px 7px",textAlign:"center"}}>{l.qte}</td><td style={{padding:"4px 7px",textAlign:"right"}}>{money(l.pu)}</td><td style={{padding:"4px 7px",textAlign:"right"}}>{money(l.qte*l.pu)}</td></tr>)}</tbody>
           </table>
-          <div style={{textAlign:"right",fontWeight:700,fontSize:"8.5pt",color:"#1a56db",marginTop:4}}>Total TTC : {money(ttc)}</div>
+          <div style={{textAlign:"right",fontWeight:700,fontSize:"9.5pt",color:"var(--ae-orange)",marginTop:5}}>Total TTC : {money(ttc)}</div>
         </div>}
-        <div className="a4-box" style={{marginBottom:"3mm"}}>
+        <div className="a4-box" style={{marginBottom:"5.5mm"}}>
           <div className="a4-sec-t">Règlement</div>
           <div className="a4-g4">
             <div className="a4-f"><label>Montant reçu</label><div className="v">{ttc>0?money(ttc):"—"}</div></div>
@@ -799,17 +814,18 @@ function DocBon({doc, client, societe, onClose}) {
             <div className="a4-f"><label>Temps passé</label><div className="v">{doc.tempsPasse||"—"}</div></div>
             <div className="a4-f"><label>Référence</label><div className="v">{doc.reference||"—"}</div></div>
           </div>
+          {societe.iban&&<div className="a4-f" style={{marginTop:"1mm",marginBottom:0}}><label>IBAN — {societe.nom}</label><div className="v">{societe.iban}</div></div>}
         </div>
         <div className="a4-sig">
           <div className="a4-sig-box">
             <div className="a4-sig-label">Signature du technicien</div>
-            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:50,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:60,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
             <div className="a4-sig-line">{societe.technicien} — {societe.nom}</div>
           </div>
           <div className="a4-sig-box">
             <div className="a4-sig-label">Signature et cachet du client</div>
-            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:50,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
-            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
+            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:60,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"7.6pt",fontWeight:700,color:"var(--ae-teal)",marginTop:"1.5mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
             <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
@@ -830,79 +846,87 @@ function DocAttestation({doc, client, societe, onClose}) {
   const comb=doc.combustion||{};
   const typeLabel=isClim?"CLIMATISATION":isPac?"POMPE À CHALEUR":isFioul?"CHAUDIÈRE FIOUL":"CHAUDIÈRE GAZ";
   const CSS_A4=`
-    .a4page{font-family:'DM Sans',sans-serif;font-size:7.5pt;color:#111;background:#fff;padding:8mm 10mm;max-width:210mm;margin:0 auto;}
-    .a4-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm;padding-bottom:2mm;border-bottom:2px solid #1a56db;}
-    .a4-company{font-size:6.5pt;line-height:1.5;color:#333;}.a4-company strong{font-size:9pt;color:#111;display:block;}
-    .a4-logo{font-size:13pt;font-weight:800;color:#1a56db;line-height:1.1;text-align:right;}
-    .a4-title{background:#1a56db;color:#fff;text-align:center;padding:2px 0;font-size:9pt;font-weight:700;letter-spacing:1px;margin-bottom:3mm;border-radius:3px;}
-    .a4-sec{margin-bottom:2mm;}.a4-sec-t{font-size:6.5pt;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1a56db30;padding-bottom:1px;margin-bottom:1.5mm;}
-    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:2.5mm;}
-    .a4-f{display:flex;flex-direction:column;gap:1px;}.a4-f label{font-size:5.5pt;color:#888;text-transform:uppercase;font-weight:600;}
-    .a4-f .v{border-bottom:1px solid #ccc;min-height:11px;font-size:7pt;padding:1px 2px;color:#111;font-weight:500;}
-    .a4-box{background:#f7f9ff;border:1px solid #dce8ff;border-radius:4px;padding:2mm;}
-    .a4-comb{display:flex;gap:1.5mm;flex-wrap:wrap;}
-    .a4-ci{background:#f7f9ff;border:1px solid #dce8ff;border-radius:3px;padding:1.5px 4px;text-align:center;flex:1;min-width:20mm;}
-    .a4-ci .cl{font-size:5pt;color:#888;text-transform:uppercase;}
-    .a4-ci .cv{font-size:8pt;font-weight:700;color:#1a56db;}
-    .a4-ci .cu{font-size:5pt;color:#aaa;}
-    .a4-checks{display:grid;grid-template-columns:1fr 1fr;gap:1mm;}
-    .a4-chk{display:flex;align-items:center;gap:3px;font-size:6.5pt;}
-    .a4-chkbox{width:9px;height:9px;border:1px solid #aaa;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:6px;font-weight:700;}
-    .a4-chkbox.ok{background:#e8f5e9;border-color:#4caf50;color:#2e7d32;}
-    .a4-chkbox.nok{background:#ffebee;border-color:#f44336;color:#c62828;}
-    .a4-chkbox.na{background:#f5f5f5;border-color:#bbb;color:#777;}
-    .a4-travaux{border:1px solid #ddd;border-radius:3px;padding:1.5mm;min-height:9mm;font-size:7pt;color:#333;white-space:pre-wrap;}
-    .a4-rend{border:1px solid #1a56db30;border-radius:3px;padding:1.5mm;display:grid;grid-template-columns:1fr 1fr;gap:1.5mm;}
-    .a4-rend label{font-size:5.5pt;color:#888;text-transform:uppercase;font-weight:600;display:block;}
-    .a4-rend .v{font-size:7.5pt;font-weight:700;color:#1a56db;border-bottom:1px solid #ccc;padding:1px 2px;}
-    .a4-classif{width:100%;border-collapse:collapse;font-size:6pt;margin-top:0.5mm;}
-    .a4-classif th{background:#1a56db;color:#fff;padding:1.5px 3px;text-align:left;font-weight:600;}
-    .a4-classif td{padding:1.5px 3px;border-bottom:1px solid #eee;}
-    .a4-classif tr:nth-child(even) td{background:#f7f9ff;}
-    .a4-badge-cls{display:inline-block;background:#1a56db;color:#fff;border-radius:2px;padding:0 3px;font-weight:700;font-size:7.5pt;}
-    .a4-nonconf{border:1px solid #ddd;border-radius:3px;background:#fafafa;padding:1.5mm;}
-    .a4-nonconf-t{font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;}
-    .a4-nonconf-txt{font-size:6.5pt;color:#333;line-height:1.4;}
-    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:2mm;margin-top:2mm;}
-    .a4-sig-box{border:1px solid #ddd;border-radius:4px;padding:2mm;min-height:14mm;display:flex;flex-direction:column;}
-    .a4-sig-label{font-size:6pt;color:#888;margin-bottom:1mm;font-weight:600;}
-    .a4-sig-line{margin-top:auto;border-top:1px dashed #ccc;padding-top:1px;font-size:5.5pt;color:#aaa;}
-    .a4-footer{margin-top:2mm;padding-top:1.5mm;border-top:1px solid #eee;text-align:center;font-size:5.5pt;color:#aaa;}
-    .a4-etat{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;border-radius:3px;padding:1px 5px;font-size:6.5pt;font-weight:700;}
+    :root{--ae-navy:#1c3358;--ae-orange:#f2822c;--ae-orange-soft:#fdece0;--ae-teal:#1f9d8a;--ae-grey:#5b6270;--ae-line:#c9cdd6;}
+    .a4page{font-family:'DM Sans',sans-serif;font-size:7.8pt;color:#1f2430;background:#fff;padding:9mm 11mm;max-width:210mm;margin:0 auto;}
+    .a4-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3.5mm;padding-bottom:2.5mm;border-bottom:3px solid var(--ae-navy);}
+    .a4-header-left{display:flex;align-items:center;gap:4mm;}
+    .a4-company{font-size:6.6pt;line-height:1.6;color:var(--ae-grey);}.a4-company strong{font-size:11pt;color:var(--ae-navy);display:block;letter-spacing:.2px;}
+    .a4-logo{font-size:13pt;font-weight:800;color:var(--ae-navy);line-height:1.1;text-align:right;}
+    .a4-doc-ref{text-align:right;font-size:6.6pt;color:var(--ae-grey);}.a4-doc-ref b{color:var(--ae-navy);font-size:7.6pt;}
+    .a4-title{background:linear-gradient(90deg,var(--ae-navy) 0%,var(--ae-navy) 60%,var(--ae-orange) 100%);color:#fff;text-align:center;padding:6px 0;font-size:9.8pt;font-weight:700;letter-spacing:1.3px;margin-bottom:3.5mm;border-radius:5px;}
+    .a4-sec{margin-bottom:2.2mm;}.a4-sec-t{font-size:6.9pt;font-weight:700;color:var(--ae-navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:1.8mm;display:flex;align-items:center;gap:4px;}
+    .a4-sec-t::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ae-orange);display:inline-block;flex-shrink:0;}
+    .a4-g2{display:grid;grid-template-columns:1fr 1fr;gap:3mm;}
+    .a4-f{display:flex;flex-direction:column;gap:1px;}.a4-f label{font-size:5.6pt;color:#8b909b;text-transform:uppercase;font-weight:700;}
+    .a4-f .v{border-bottom:1px solid var(--ae-line);min-height:12px;font-size:7.4pt;padding:1.5px 2px;color:#1f2430;font-weight:600;}
+    .a4-box{background:#fff;border:1px solid var(--ae-line);border-left:3px solid var(--ae-orange);border-radius:5px;padding:2.6mm 3mm;}
+    .a4-box.blue{border-left-color:var(--ae-navy);}
+    .a4-comb{display:flex;gap:1.8mm;flex-wrap:wrap;}
+    .a4-ci{background:#fff;border:1px solid var(--ae-line);border-radius:4px;padding:2px 4px;text-align:center;flex:1;min-width:20mm;}
+    .a4-ci .cl{font-size:5.2pt;color:#8b909b;text-transform:uppercase;font-weight:700;}
+    .a4-ci .cv{font-size:9pt;font-weight:800;color:var(--ae-navy);}
+    .a4-ci .cu{font-size:5pt;color:#a3a8b0;}
+    .a4-checks{display:grid;grid-template-columns:1fr 1fr;gap:1.3mm;}
+    .a4-chk{display:flex;align-items:center;gap:4px;font-size:6.9pt;}
+    .a4-chkbox{width:10px;height:10px;border:1.2px solid #9aa0ab;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:6.5px;font-weight:800;color:#fff;}
+    .a4-chkbox.ok{background:var(--ae-teal);border-color:var(--ae-teal);}
+    .a4-chkbox.nok{background:#c62828;border-color:#c62828;}
+    .a4-chkbox.na{background:#6b7280;border-color:#6b7280;}
+    .a4-travaux{border:1px solid var(--ae-line);border-radius:5px;padding:2mm;min-height:10mm;font-size:7.4pt;color:#333;white-space:pre-wrap;line-height:1.5;}
+    .a4-rend{border:1.2px solid var(--ae-orange);background:var(--ae-orange-soft);border-radius:5px;padding:2mm;display:grid;grid-template-columns:1fr 1fr;gap:2mm;}
+    .a4-rend label{font-size:5.6pt;color:#9c6a3d;text-transform:uppercase;font-weight:700;display:block;}
+    .a4-rend .v{font-size:8.4pt;font-weight:800;color:var(--ae-orange);border-bottom:none;padding:1px 2px;}
+    .a4-classif{width:100%;border-collapse:collapse;font-size:6.4pt;margin-top:0.8mm;}
+    .a4-classif th{background:var(--ae-navy);color:#fff;padding:2.2px 4px;text-align:left;font-weight:700;}
+    .a4-classif td{padding:2.2px 4px;border-bottom:1px solid var(--ae-line);}
+    .a4-badge-cls{display:inline-block;color:#fff;border-radius:3px;padding:0.5px 6px;font-weight:700;font-size:7pt;}
+    .a4-nonconf{border:1.2px solid var(--ae-teal);background:#fff;border-radius:5px;padding:2mm 2.4mm;}
+    .a4-nonconf.warn{border-color:#c62828;}
+    .a4-nonconf-t{font-size:7pt;font-weight:700;margin-bottom:0.8mm;}
+    .a4-nonconf-txt{font-size:6.7pt;color:#4a5568;line-height:1.5;}
+    .a4-sig{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:3mm;}
+    .a4-sig-box{border:1px solid var(--ae-line);border-radius:6px;padding:2.5mm;min-height:16mm;display:flex;flex-direction:column;}
+    .a4-sig-label{font-size:6.4pt;color:var(--ae-navy);margin-bottom:1.2mm;font-weight:700;text-transform:uppercase;}
+    .a4-sig-line{margin-top:auto;border-top:1px dashed var(--ae-line);padding-top:1.5px;font-size:6pt;color:#8b909b;}
+    .a4-footer{margin-top:3mm;padding-top:2mm;border-top:1px solid var(--ae-line);text-align:center;font-size:6.1pt;color:#8b909b;}
+    .a4-etat{display:inline-block;background:var(--ae-teal);color:#fff;border-radius:4px;padding:1.5px 7px;font-size:6.8pt;font-weight:700;}
   `;
   return (
     <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Attestation d'entretien ${doc.numero} — ${societe.nom}`,body:`Bonjour,\n\nVeuillez trouver ci-joint votre attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`}:null}>
       <style>{CSS_A4}</style>
       <div className="a4page">
         <div className="a4-header">
-          <div className="a4-company">
-            <strong>{societe.nom}</strong>
-            {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
+          <div className="a4-header-left">
+            {societe.logo?<img src={societe.logo} alt="Logo" style={{height:64,maxWidth:130,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}
+            <div className="a4-company">
+              <strong>{societe.nom}</strong>
+              {societe.adresse}<br/>Tél : {societe.tel} — {societe.email}<br/>SIRET : {societe.siret}
+            </div>
           </div>
-          <div>{societe.logo?<img src={societe.logo} alt="Logo" style={{height:80,maxWidth:160,objectFit:"contain",display:"block"}}/>:<div className="a4-logo">🔥 {societe.nom}</div>}</div>
+          <div className="a4-doc-ref">N° attestation<br/><b>{doc.numero}</b></div>
         </div>
 
         <div className="a4-title">ATTESTATION D'ENTRETIEN — {typeLabel}</div>
 
         {/* CLIENT + APPAREIL */}
-        <div className="a4-g2" style={{marginBottom:"2.5mm"}}>
-          <div className="a4-box">
+        <div className="a4-g2" style={{marginBottom:"2.8mm"}}>
+          <div className="a4-box blue">
             <div className="a4-sec-t">Client</div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
             <div className="a4-f"><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Appareil</div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>Marque / Modèle ext.</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
-            <div className="a4-f" style={{marginBottom:"1.5mm"}}><label>N° Série ext.</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Marque / Modèle ext.</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>N° Série ext.</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
             {(equip.unitesInt||[]).length>0&&(equip.unitesInt||[]).map((ui,i)=>(
-              <div key={i} style={{marginTop:"1.5mm",paddingTop:"1.5mm",borderTop:"1px solid #eee"}}>
-                <div style={{fontSize:"5.5pt",color:"#1a56db",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
+              <div key={i} style={{marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`}}>
+                <div style={{fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
                 {ui.modele&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Modèle</label><div className="v">{ui.modele}</div></div>}
                 {ui.numSerie&&<div className="a4-f"><label>N° Série</label><div className="v">{ui.numSerie}</div></div>}
               </div>
             ))}
-            <div className="a4-g2" style={{gap:"2mm"}}>
+            <div className="a4-g2" style={{gap:"2.2mm"}}>
               <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
               <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{equip.fluideClim||equip.fluidePac||equip.gaz||"—"}</div></div>
             </div>
@@ -910,26 +934,26 @@ function DocAttestation({doc, client, societe, onClose}) {
         </div>
 
         {/* DATE + ÉTAT */}
-        <div className="a4-g2" style={{marginBottom:"2.5mm"}}>
+        <div className="a4-g2" style={{marginBottom:"2.8mm"}}>
           <div className="a4-f"><label>Date d'entretien</label><div className="v">{fmt(doc.date)}</div></div>
         </div>
 
         {/* LAYOUT 2 COLONNES */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3mm",marginBottom:"2.5mm"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4mm",marginBottom:"2.8mm"}}>
 
           {/* COLONNE GAUCHE : Checks + Travaux */}
-          <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:"2.4mm"}}>
             <div className="a4-sec">
               <div className="a4-sec-t">Points de vérification</div>
               {!isClim&&!isPac?(
                 <>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.6pt"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:"6.1pt"}}>
                   <thead>
                     <tr>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"left",fontWeight:600,fontSize:"5.3pt",width:"73%"}}>{isFioul?"Points obligatoires":"Point de contrôle"}</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>🚫</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>👎</th>
-                      <th style={{background:"#1a56db",color:"#fff",padding:"2px 3px",textAlign:"center",fontWeight:600,fontSize:"5.3pt"}}>👍</th>
+                      <th style={{background:"var(--ae-navy)",color:"#fff",padding:"2.6px 4px",textAlign:"left",fontWeight:700,fontSize:"5.8pt",width:"73%"}}>{isFioul?"Points obligatoires":"Point de contrôle"}</th>
+                      <th style={{background:"var(--ae-navy)",color:"#fff",padding:"2.6px 4px",textAlign:"center",fontWeight:700,fontSize:"5.8pt"}}>N/A</th>
+                      <th style={{background:"var(--ae-navy)",color:"#fff",padding:"2.6px 4px",textAlign:"center",fontWeight:700,fontSize:"5.8pt"}}>✗</th>
+                      <th style={{background:"var(--ae-navy)",color:"#fff",padding:"2.6px 4px",textAlign:"center",fontWeight:700,fontSize:"5.8pt"}}>✓</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -937,16 +961,16 @@ function DocAttestation({doc, client, societe, onClose}) {
                       const val=checks[i];
                       const so=val==="na",nv=val==="nok",v=val==="ok";
                       return(
-                        <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2===0?"#f7f9ff":"#fff"}}>
-                          <td style={{padding:"1.8px 3px",fontSize:"5.6pt",lineHeight:1.25,color:"#222"}}>{c}</td>
-                          <td style={{textAlign:"center",padding:"1.5px"}}>
-                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{so?"🚫":""}</div>
+                        <tr key={i} style={{borderBottom:"1px solid var(--ae-line)"}}>
+                          <td style={{padding:"2.4px 4px",fontSize:"6.1pt",lineHeight:1.3,color:"#222"}}>{c}</td>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div className={`a4-chkbox${so?" na":""}`}>{so?"–":""}</div>
                           </td>
-                          <td style={{textAlign:"center",padding:"1.5px"}}>
-                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{nv?"👎":""}</div>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div className={`a4-chkbox${nv?" nok":""}`}>{nv?"✗":""}</div>
                           </td>
-                          <td style={{textAlign:"center",padding:"1.5px"}}>
-                            <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{v?"👍":""}</div>
+                          <td style={{textAlign:"center",padding:"2px"}}>
+                            <div className={`a4-chkbox${v?" ok":""}`}>{v?"✓":""}</div>
                           </td>
                         </tr>
                       );
@@ -954,24 +978,24 @@ function DocAttestation({doc, client, societe, onClose}) {
                   </tbody>
                 </table>
                 {isFioul&&<>
-                  <div style={{fontSize:"5.8pt",fontWeight:700,color:"#888",textTransform:"uppercase",margin:"1.5mm 0 1mm"}}>Points recommandés</div>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:"5.6pt"}}>
+                  <div style={{fontSize:"6.2pt",fontWeight:700,color:"var(--ae-navy)",textTransform:"uppercase",margin:"1.8mm 0 1.2mm"}}>Points recommandés</div>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:"6.1pt"}}>
                     <tbody>
                       {CHECKS_FIOUL_REC.map((c,i)=>{
                         const idx=CHECKS_FIOUL_OBLIG.length+i;
                         const val=checks[idx];
                         const so=val==="na",nv=val==="nok",v=val==="ok";
                         return(
-                          <tr key={i} style={{borderBottom:"1px solid #eee",background:i%2===0?"#f7f9ff":"#fff"}}>
-                            <td style={{padding:"1.8px 3px",fontSize:"5.6pt",lineHeight:1.25,color:"#222",width:"73%"}}>{c}</td>
-                            <td style={{textAlign:"center",padding:"1.5px"}}>
-                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:so?"#6b7280":"#ccc",background:so?"#e5e7eb":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{so?"🚫":""}</div>
+                          <tr key={i} style={{borderBottom:"1px solid var(--ae-line)"}}>
+                            <td style={{padding:"2.4px 4px",fontSize:"6.1pt",lineHeight:1.3,color:"#222",width:"73%"}}>{c}</td>
+                            <td style={{textAlign:"center",padding:"2px"}}>
+                              <div className={`a4-chkbox${so?" na":""}`}>{so?"–":""}</div>
                             </td>
-                            <td style={{textAlign:"center",padding:"1.5px"}}>
-                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:nv?"#ef4444":"#ccc",background:nv?"#fee2e2":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{nv?"👎":""}</div>
+                            <td style={{textAlign:"center",padding:"2px"}}>
+                              <div className={`a4-chkbox${nv?" nok":""}`}>{nv?"✗":""}</div>
                             </td>
-                            <td style={{textAlign:"center",padding:"1.5px"}}>
-                              <div style={{width:11,height:11,borderRadius:2,border:"1px solid",borderColor:v?"#22c55e":"#ccc",background:v?"#dcfce7":"transparent",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:7}}>{v?"👍":""}</div>
+                            <td style={{textAlign:"center",padding:"2px"}}>
+                              <div className={`a4-chkbox${v?" ok":""}`}>{v?"✓":""}</div>
                             </td>
                           </tr>
                         );
@@ -995,16 +1019,16 @@ function DocAttestation({doc, client, societe, onClose}) {
             </div>
             <div className="a4-sec">
               <div className="a4-sec-t">Travaux réalisés & Observations</div>
-              <div className="a4-travaux" style={{minHeight:"8mm"}}>{doc.observations||""}</div>
+              <div className="a4-travaux" style={{minHeight:"9mm"}}>{doc.observations||""}</div>
             </div>
           </div>
 
           {/* COLONNE DROITE : Mesures + Rendement + Classif + Non-conf */}
-          <div style={{display:"flex",flexDirection:"column",gap:"2mm"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:"2.4mm"}}>
 
             {!isClim&&!isPac&&<div className="a4-sec">
               <div className="a4-sec-t">Mesures de combustion{isFioul?" & Brûleur":""}</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.5mm",marginBottom:"1.5mm"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.8mm",marginBottom:"1.8mm"}}>
                 <div className="a4-ci"><div className="cl">CO Amb.</div><div className="cv">{doc.vierge?"":comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
                 <div className="a4-ci"><div className="cl">CO Fum.</div><div className="cv">{doc.vierge?"":comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
                 <div className="a4-ci"><div className="cl">CO₂</div><div className="cv">{doc.vierge?"":comb.co2||"—"}</div><div className="cu">%</div></div>
@@ -1020,7 +1044,7 @@ function DocAttestation({doc, client, societe, onClose}) {
 
             {(isClim||isPac)&&<div className="a4-sec">
               <div className="a4-sec-t">Mesures</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.5mm"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.8mm"}}>
                 {isClim&&<><div className="a4-ci"><div className="cl">T. soufflage</div><div className="cv">{comb.tempSoufflage||"—"}</div><div className="cu">°C</div></div>
                 <div className="a4-ci"><div className="cl">T. reprise</div><div className="cv">{comb.tempReprise||"—"}</div><div className="cu">°C</div></div>
                 <div className="a4-ci"><div className="cl">Écart ΔT</div><div className="cv">{comb.tempSoufflage&&comb.tempReprise?Math.abs(Number(comb.tempReprise)-Number(comb.tempSoufflage)):"—"}</div><div className="cu">°C</div></div></>}
@@ -1032,11 +1056,11 @@ function DocAttestation({doc, client, societe, onClose}) {
 
             {!isClim&&!isPac&&<div className="a4-sec">
               <div className="a4-sec-t">Rendement PCI & NOx</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1.5mm",marginBottom:"1.5mm"}}>
-                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Rdt évalué</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{comb.rendement||"—"} %</div></div>
-                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>Rdt référence</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{isFioul?"85,0":"93,0"} %</div></div>
-                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>NOx évalués</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>{comb.nox||"—"} mg/kWh</div></div>
-                <div><div style={{fontSize:"5.5pt",color:"#888",textTransform:"uppercase",fontWeight:600}}>NOx référence</div><div style={{fontSize:"7.5pt",fontWeight:700,color:"#1a56db",borderBottom:"1px solid #ccc",padding:"1px 2px"}}>35 mg/kWh</div></div>
+              <div className="a4-rend">
+                <div><label>Rdt évalué</label><div className="v">{comb.rendement||"—"} %</div></div>
+                <div><label>Rdt référence</label><div className="v" style={{color:"var(--ae-navy)"}}>{isFioul?"85,0":"93,0"} %</div></div>
+                <div><label>NOx évalués</label><div className="v">{comb.nox||"—"} mg/kWh</div></div>
+                <div><label>NOx référence</label><div className="v" style={{color:"var(--ae-navy)"}}>35 mg/kWh</div></div>
               </div>
             </div>}
 
@@ -1045,10 +1069,10 @@ function DocAttestation({doc, client, societe, onClose}) {
               <table className="a4-classif">
                 <thead><tr><th>Classe</th><th>Fabrication</th><th>Énergie</th></tr></thead>
                 <tbody>
-                  <tr><td>Standard / basse T°</td><td>Avant 2005</td><td><span className="a4-badge-cls">D</span></td></tr>
-                  <tr><td>Standard / basse T°</td><td>Après 2005</td><td><span className="a4-badge-cls">C</span></td></tr>
-                  <tr><td>Condensation</td><td>Avant 2005</td><td><span className="a4-badge-cls">B</span></td></tr>
-                  <tr><td>Condensation</td><td>Après 2005</td><td><span className="a4-badge-cls" style={{background:"#2e7d32"}}>A</span></td></tr>
+                  <tr><td>Standard / basse T°</td><td>Avant 2005</td><td><span className="a4-badge-cls" style={{background:"#6b7280"}}>D</span></td></tr>
+                  <tr><td>Standard / basse T°</td><td>Après 2005</td><td><span className="a4-badge-cls" style={{background:"var(--ae-navy)"}}>C</span></td></tr>
+                  <tr><td>Condensation</td><td>Avant 2005</td><td><span className="a4-badge-cls" style={{background:"var(--ae-teal)"}}>B</span></td></tr>
+                  <tr><td>Condensation</td><td>Après 2005</td><td><span className="a4-badge-cls" style={{background:"#1a7a4c"}}>A</span></td></tr>
                 </tbody>
               </table>
             </div>}
@@ -1056,10 +1080,10 @@ function DocAttestation({doc, client, societe, onClose}) {
             {/* NON-CONFORMITÉS dans colonne droite - masqué si vierge */}
             {!doc.vierge&&<div className="a4-sec">
               <div className="a4-sec-t">Non-conformités éventuelles</div>
-              <div className="a4-nonconf">
+              <div className={`a4-nonconf${nonConf.length>0?" warn":""}`}>
                 {nonConf.length>0
                   ? <><div className="a4-nonconf-t" style={{color:"#c62828"}}>⚠ Anomalie(s) détectée(s)</div>{nonConf.map((n,i)=><div key={i} className="a4-nonconf-txt">• {n}</div>)}</>
-                  : <><div className="a4-nonconf-t" style={{color:"#2e7d32"}}>✓ Aucune non-conformité détectée</div><div className="a4-nonconf-txt">L'installation est conforme aux exigences réglementaires en vigueur.</div></>
+                  : <><div className="a4-nonconf-t" style={{color:"var(--ae-teal)"}}>✓ Aucune non-conformité détectée</div><div className="a4-nonconf-txt">L'installation est conforme aux exigences réglementaires en vigueur.</div></>
                 }
               </div>
             </div>}
@@ -1071,16 +1095,17 @@ function DocAttestation({doc, client, societe, onClose}) {
         <div className="a4-sig">
           <div className="a4-sig-box">
             <div className="a4-sig-label">Technicien</div>
-            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:40,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {doc.sigTech?<img src={doc.sigTech} alt="sig" style={{maxHeight:46,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
             <div className="a4-sig-line">{societe.technicien} — {societe.nom}</div>
           </div>
           <div className="a4-sig-box">
             <div className="a4-sig-label">Client — Bon pour accord</div>
-            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:40,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
-            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.5pt",fontWeight:600,color:"#1a56db",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
+            {doc.sigClient?<img src={doc.sigClient} alt="sig" style={{maxHeight:46,objectFit:"contain"}}/>:<div style={{flex:1}}/>}
+            {(doc.montantEncaisse||doc.modeReglement)&&<div style={{fontSize:"6.9pt",fontWeight:700,color:"var(--ae-teal)",marginTop:"1mm"}}>💰 {doc.montantEncaisse?`${doc.montantEncaisse} €`:""} {doc.modeReglement||""}</div>}
             <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
+        {societe.iban&&<div style={{marginTop:"2mm",fontSize:"6.4pt",color:"var(--ae-grey)"}}><strong style={{color:"var(--ae-navy)"}}>IBAN — {societe.nom} :</strong> {societe.iban}</div>}
         <div className="a4-footer">
           {isClim||isPac
             ? `Attestation délivrée conformément au décret n°2020-912 du 28 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
