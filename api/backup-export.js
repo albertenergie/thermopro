@@ -44,10 +44,15 @@ async function chargerDocsItems(db) {
 }
 
 export default async function handler(req, res) {
-  // Sécurité : seul Vercel Cron (avec le bon secret) ou toi-même en test manuel
-  // peut déclencher cette route.
+  // Sécurité : Vercel Cron envoie le secret dans l'en-tête Authorization.
+  // Pour un test manuel depuis un navigateur, on accepte aussi ?secret=... dans l'URL.
   const auth = req.headers.authorization;
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const querySecret = req.query.secret;
+  const authorized =
+    !process.env.CRON_SECRET ||
+    auth === `Bearer ${process.env.CRON_SECRET}` ||
+    querySecret === process.env.CRON_SECRET;
+  if (!authorized) {
     return res.status(401).json({ error: "Non autorisé" });
   }
 
