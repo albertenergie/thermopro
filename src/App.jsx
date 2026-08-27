@@ -1514,7 +1514,7 @@ function ModalClient({client, onSave, onClose}) {
 }
 
 function ModalRdv({rdv, clients, onSave, onClose}) {
-  const [f,setF]=useState(rdv||{clientId:"",date:todayStr(),heure:"08:00",type:"Entretien annuel",statut:"En attente",notes:""});
+  const [f,setF]=useState(rdv||{clientId:"",titre:"",date:todayStr(),heure:"08:00",type:"Entretien annuel",statut:"En attente",notes:""});
   const [clientSearch,setClientSearch]=useState(()=>{if(rdv?.clientId){const c=clients.find(x=>x.id===rdv.clientId);return c?`${c.prenom} ${c.nom}`:"";} return "";});
   const [showDrop,setShowDrop]=useState(false);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -1525,22 +1525,23 @@ function ModalRdv({rdv, clients, onSave, onClose}) {
       <div className="modal-title">{rdv?"Modifier RDV":"Nouveau rendez-vous"}</div>
       <div className="form-grid">
         <div className="form-group full" style={{position:"relative"}}>
-          <label>Client</label>
+          <label>Client <span style={{fontWeight:400,color:"var(--muted)"}}>(laisser vide pour un rendez-vous personnel)</span></label>
           <input value={clientSearch} onChange={e=>{setClientSearch(e.target.value);setShowDrop(true);s("clientId","");}} onFocus={()=>setShowDrop(true)} placeholder="🔍 Rechercher…"/>
           {showDrop&&clientFiltered.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10,zIndex:300,maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px #00000060",marginTop:4}}>
             {clientFiltered.map(c=><div key={c.id} onClick={()=>selectClient(c)} style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid var(--border)"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface2)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{fontWeight:600,fontSize:"0.875rem"}}>{c.prenom} {c.nom}</div><div style={{fontSize:"0.75rem",color:"var(--muted)"}}>{fullAddr(c)}</div></div>)}
           </div>}
           {f.clientId&&<div style={{fontSize:"0.75rem",color:"var(--success)",marginTop:4}}>✓ Sélectionné</div>}
         </div>
+        {!f.clientId&&<div className="form-group full"><label>Titre du rendez-vous personnel</label><input value={f.titre||""} onChange={e=>s("titre",e.target.value)} placeholder="Ex: RDV médecin, congés, formation…"/></div>}
         <div className="form-group"><label>Date</label><input type="date" value={f.date} onChange={e=>s("date",e.target.value)}/></div>
         <div className="form-group"><label>Heure</label><input type="time" value={f.heure} onChange={e=>s("heure",e.target.value)}/></div>
-        <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Entretien annuel</option><option>Dépannage</option><option>Installation</option><option>Diagnostic</option><option>Autre</option></select></div>
+        <div className="form-group"><label>Type</label><select value={f.type} onChange={e=>s("type",e.target.value)}><option>Entretien annuel</option><option>Dépannage</option><option>Installation</option><option>Diagnostic</option><option>Personnel</option><option>Autre</option></select></div>
         <div className="form-group"><label>Statut</label><select value={f.statut} onChange={e=>s("statut",e.target.value)}><option>En attente</option><option>Confirmé</option><option>Réalisé</option><option>Annulé</option></select></div>
         <div className="form-group full"><label>Notes</label><textarea value={f.notes} onChange={e=>s("notes",e.target.value)}/></div>
       </div>
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-        <button className="btn btn-primary" onClick={()=>onSave(f)} disabled={!f.clientId||!f.date}>Enregistrer</button>
+        <button className="btn btn-primary" onClick={()=>onSave(f)} disabled={!f.date}>Enregistrer</button>
       </div>
     </div></div>
   );
@@ -1834,7 +1835,7 @@ function PageDashboard({clients,rdvs,docs,setDocs}) {
         })}
       </div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        <div className="card"><div className="card-title">📅 RDV à venir</div>{rdvs.filter(r=>r.date>=auj).slice(0,5).map(r=>{const c=clients.find(x=>x.id===r.clientId);return(<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}><div><div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?.prenom} {c?.nom}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{r.type} · {fmt(r.date)} {r.heure}</div></div><span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":"warning"}`}>{r.statut}</span></div>);})}</div>
+        <div className="card"><div className="card-title">📅 RDV à venir</div>{rdvs.filter(r=>r.date>=auj).slice(0,5).map(r=>{const c=clients.find(x=>x.id===r.clientId);return(<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}><div><div style={{fontWeight:600,fontSize:"0.875rem"}}>{c?`${c.prenom} ${c.nom}`:(r.titre||"📌 Personnel")}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{r.type} · {fmt(r.date)} {r.heure}</div></div><span className={`badge badge-${r.statut==="Confirmé"?"success":r.statut==="Réalisé"?"info":"warning"}`}>{r.statut}</span></div>);})}</div>
         <div className="card">
           <div className="card-title">⚠️ Impayés</div>
           {impayes.length===0&&<div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Aucun impayé 🎉</div>}
@@ -1947,7 +1948,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
                         <div key={r.id} style={{margin:"4px 8px",background:isRealise?"#22c55e15":isConfirme?"#f9731615":"#f59e0b15",border:`1px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderLeft:`4px solid ${isRealise?"var(--success)":isConfirme?"var(--accent)":"var(--warning)"}`,borderRadius:8,padding:"8px 12px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
                             <div style={{flex:1}}>
-                              <div style={{fontWeight:700,fontSize:"0.95rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
+                              <div style={{fontWeight:700,fontSize:"0.95rem"}}>⏰ {r.heure} — {c?`${c.prenom} ${c.nom}`:(r.titre||"📌 Personnel")}</div>
                               <div style={{fontSize:"0.82rem",color:"var(--muted)",marginTop:3}}>{r.type}</div>
                               <div style={{fontSize:"0.8rem",marginTop:3}}><AddrLink client={c} style={{fontSize:"0.8rem"}}/></div>
                               {c?.tel&&<div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:2}}>📞 <a href={`tel:${c.tel.replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>{c.tel}</a></div>}
@@ -1955,7 +1956,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
                             </div>
                             <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,alignItems:"flex-end"}}>
                               <span className={`badge badge-${isRealise?"success":isConfirme?"accent":"warning"}`}>{r.statut}</span>
-                              {!isRealise&&r.statut!=="Annulé"&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
+                              {!isRealise&&r.statut!=="Annulé"&&c&&<button className="btn btn-primary btn-sm" onClick={()=>openWizard(r)}>▶ Démarrer</button>}
                               <div style={{display:"flex",gap:5}}>
                                 <button className="btn btn-secondary btn-sm" onClick={()=>setModalRdv({mode:"edit",rdv:r})}>✏️</button>
                                 <button className="btn btn-danger btn-sm" onClick={()=>delRdv(r.id)}>🗑️</button>
@@ -1978,7 +1979,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
       {viewMode==="mois"&&<>
         <div className="cal-header">{JOURS_FULL.map(j=><span key={j}>{j}</span>)}</div>
         <div className="cal-grid">
-          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?.nom}</div>;})}</div>);})}
+          {days.map((d,i)=>{const dStr=ds(d.date),isT=dStr===todStr,isSel=dStr===selected;return(<div key={i} className={`cal-day${!d.cur?" other-month":""}${isT?" today":""}${isSel?" selected":""}`} onClick={()=>setSelected(dStr)}><div className={`cal-day-num${isT?" today-c":""}`}>{d.date.getDate()}</div>{rdvsDay(d.date).map(r=>{const c=clients.find(x=>x.id===r.clientId);return <div key={r.id} className="cal-chip">{r.heure} {c?c.nom:(r.titre||"📌")}</div>;})}</div>);})}
         </div>
       </>}
 
@@ -1987,7 +1988,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
           <div className="week-header" style={{background:"var(--surface2)",borderRight:"1px solid var(--border)"}}></div>
           {weekDays.map((d,i)=>{const dStr=ds(d),isT=dStr===todStr;return(<div key={i} className="week-header"><div className="week-header-day">{JOURS_FULL[i]}</div><div className={`week-header-date${isT?" today-c":""}`}>{d.getDate()}</div></div>);})}
           <div className="week-time-col">{HOURS.map(h=><div key={h} className="week-time-slot">{h}</div>)}</div>
-          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{HOURS.map(h=><div key={h} className="week-slot"/>)}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?.nom}</div></div>);})}</div>);})}
+          {weekDays.map((d,di)=>{const dStr=ds(d);const dayRdvs=rdvs.filter(r=>r.date===dStr);return(<div key={di} className="week-day-col" onClick={()=>setSelected(dStr)}>{HOURS.map(h=><div key={h} className="week-slot"/>)}{dayRdvs.map(r=>{const c=clients.find(x=>x.id===r.clientId);const top=heureToPx(r.heure);return(<div key={r.id} className="week-event" style={{top:top+1}} onClick={e=>{e.stopPropagation();setSelected(dStr);}}><div style={{fontWeight:700}}>{r.heure}</div><div>{c?c.nom:(r.titre||"📌 Personnel")}</div></div>);})}</div>);})}
         </div>
       </div>}
 
@@ -2003,7 +2004,7 @@ function PageAgenda({rdvs, setRdvs, clients, docs, setDocs, catalogue, societe})
           const docIcon=t=>t.includes("Gaz")?"🔥":t.includes("Fioul")?"🛢️":t.includes("Clim")?"❄️":t.includes("PAC")?"♻️":t.includes("pannage")?"⚠️":t.includes("placement")?"🔩":"📋";
           return(<div key={r.id} className="rdv-row">
             <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?.prenom} {c?.nom}</div>
+              <div style={{fontWeight:700,fontSize:"0.9rem"}}>⏰ {r.heure} — {c?`${c.prenom} ${c.nom}`:(r.titre||"📌 Personnel")}</div>
               <div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:2}}>{r.type} · <AddrLink client={c} style={{fontSize:"0.78rem"}}/></div>
               {r.statut==="Réalisé"&&rdvDocs.length>0&&null}
             </div>
