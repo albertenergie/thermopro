@@ -1,0 +1,9 @@
+{
+  "short_name": "ThermoPro",
+  "name": "ThermoPro — Albert Énergie",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1c3358",
+  "background_color": "#1c3358",
+  "icons": []
+}
