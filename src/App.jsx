@@ -1774,6 +1774,10 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
           <div className="wizard-step-title"><div className="wizard-step-num">{isAttSel?(curSelIdx===0?(isClim||isPac?"4":"5"):(isClim||isPac?"3":"4")):(curSelIdx===0?"2":"1")}</div>Travaux & Observations</div>
           <div className="form-grid">
             <div className="form-group full"><label>Travaux réalisés / Observations</label><textarea value={curData.observations||""} onChange={e=>setCurData("observations",e.target.value)}/></div>
+            {isAttSel&&<div className="form-group full">
+              <label>Non-conformités éventuelles <span style={{fontWeight:400,color:"var(--muted)"}}>(une par ligne — laisser vide si l'installation est conforme)</span></label>
+              <textarea value={(curData.nonConformites||[]).join("\n")} onChange={e=>setCurData("nonConformites",e.target.value.split("\n"))} placeholder={"Ex : robinet gaz non accessible\nFlexible gaz périmé"}/>
+            </div>}
           </div>
         </div>
         <div className="form-actions">
