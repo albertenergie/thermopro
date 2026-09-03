@@ -1348,6 +1348,7 @@ function EquipForm({equip, onChange, onDelete, index}) {
       onChange({...equip,unitesInt:u});
     }
     else if(isClim){ onChange({...equip,marqueClim:res.marque||equip.marqueClim,modeleExt:res.modele||equip.modeleExt,numSerieExt:res.numSerie||equip.numSerieExt,puissanceClim:res.puissance||equip.puissanceClim,fluideClim:res.fluide||equip.fluideClim}); }
+    else if(isPac&&target==="intPac"){ onChange({...equip,marqueIntPac:res.marque||equip.marqueIntPac,modeleIntPac:res.modele||equip.modeleIntPac,numSerieIntPac:res.numSerie||equip.numSerieIntPac}); }
     else if(isPac){ onChange({...equip,marquePac:res.marque||equip.marquePac,modelePac:res.modele||equip.modelePac,numSeriePac:res.numSerie||equip.numSeriePac,puissancePac:res.puissance||equip.puissancePac}); }
     else{ onChange({...equip,marque:res.marque||equip.marque,modele:res.modele||equip.modele,numSerie:res.numSerie||equip.numSerie,puissance:res.puissance||equip.puissance}); }
   };
@@ -1420,7 +1421,10 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </div>
           </div>
           <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
-            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🏠 Unité intérieure</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>🏠 Unité intérieure</div>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("intPac")}>📷 Scanner</button>
+            </div>
             <div className="form-grid">
               <div className="form-group"><label>Marque</label><input value={equip.marqueIntPac||""} onChange={e=>s("marqueIntPac",e.target.value)}/></div>
               <div className="form-group"><label>Modèle</label><input value={equip.modeleIntPac||""} onChange={e=>s("modeleIntPac",e.target.value)}/></div>
