@@ -1061,7 +1061,12 @@ function DocAttestation({doc, client, societe, onClose}) {
           <div style={{display:"flex",flexDirection:"column",gap:"2.4mm"}}>
 
             {!isClim&&!isPac&&<div className="a4-sec">
-              <div className="a4-sec-t">Mesures de combustion{isFioul?" & Brûleur":""}</div>
+              <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:"2mm",marginBottom:"1.8mm"}}>
+                <div className="a4-sec-t" style={{marginBottom:0}}>Mesures de combustion{isFioul?" & Brûleur":""}</div>
+                {societe.analyseurModele&&<div style={{fontSize:"5.4pt",color:"var(--ae-grey)",textAlign:"right",lineHeight:1.3}}>
+                  Appareil : {societe.analyseurModele}{societe.analyseurNumSerie?` n° ${societe.analyseurNumSerie}`:""}{societe.analyseurCertificat?` — cert. ${societe.analyseurCertificat}`:""}
+                </div>}
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"1.8mm",marginBottom:"1.8mm"}}>
                 <div className="a4-ci"><div className="cl">CO Amb.</div><div className="cv">{doc.vierge?"":comb.coAmbiant||"—"}</div><div className="cu">ppm</div></div>
                 <div className="a4-ci"><div className="cl">CO Fum.</div><div className="cv">{doc.vierge?"":comb.coFumees||"—"}</div><div className="cu">ppm</div></div>
@@ -1152,12 +1157,6 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
         </div>
         {societe.iban&&<div style={{marginTop:"2mm",fontSize:"6.4pt",color:"var(--ae-grey)"}}><strong style={{color:"var(--ae-navy)"}}>IBAN — {societe.nom} :</strong> {societe.iban}</div>}
-        {societe.analyseurModele&&<div style={{marginTop:"1.2mm",fontSize:"6.2pt",color:"var(--ae-grey)"}}>
-          <strong style={{color:"var(--ae-navy)"}}>Appareil de mesure utilisé :</strong> {societe.analyseurModele}
-          {societe.analyseurNumSerie?` — n° ${societe.analyseurNumSerie}`:""}
-          {societe.analyseurCertificat?` — certificat n° ${societe.analyseurCertificat}`:""}
-          {societe.analyseurDateVerif?` — vérifié le ${fmt(societe.analyseurDateVerif)}`:""}
-        </div>}
         <div className="a4-footer">
           {isClim||isPac
             ? `Attestation délivrée conformément au décret n°2020-912 du 28 juillet 2020 et à l'arrêté du 24 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
