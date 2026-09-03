@@ -349,6 +349,7 @@ const CHECKS_FIOUL_REC = [
 ];
 const CHECKS_FIOUL = [...CHECKS_FIOUL_OBLIG, ...CHECKS_FIOUL_REC];
 const CHECKS_CLIM = ["Nettoyage filtres unité intérieure","Nettoyage évaporateur","Nettoyage condenseur unité extérieure","Nettoyage bac et évacuation condensats","Contrôle connexions électriques","Vérification télécommande / programmation","Test fonctionnement mode froid","Test fonctionnement mode chaud","Mesure température soufflage / reprise","Vérification étanchéité liaisons frigorifiques","Contrôle isolation liaisons frigorifiques","Test sécurités haute / basse pression","Contrôle fixations unités int. et ext.","Niveau sonore anormal","État général de l'installation","Désinfection / traitement antifongique"];
+const CHECKS_PAC = ["Relevé température unité intérieure / ambiance","Relevé température unité extérieure","Vérification du bon fonctionnement","Inversion de cycle (si possible)","Enclenchement des appoints","Tension électrique statique","Tension électrique dynamique","Échangeur unité extérieure : contrôle + nettoyage si nécessaire","Unité intérieure + filtre : nettoyage / décrassage","Contrôle de l'embouement du circuit hydraulique","Purge de l'air (si purgeur accessible et fonctionnel)","Contrôle de la pression du circuit","Fonctionnement des circulateurs","Filtre circuit : contrôle + nettoyage si nécessaire","Vase d'expansion : pression + regonflage si nécessaire","Isolation des réseaux accessibles hors volume chauffé (si applicable)","Température de départ d'eau (si applicable)","Fonctionnement des sondes de température (si applicable)","Robinets thermostatiques : positionnement/fonctionnement (si applicable)","Programmation horaire cohérente (si applicable)","Cohérence temp. départ selon les modes (si applicable)","Présence d'une régulation automatique de température"];
 
 const MARQUES_CHAUDIERE = ["Viessmann","Atlantic","Saunier Duval","De Dietrich","Bosch","Vaillant","Chaffoteaux","Elm Leblanc","Frisquet","Chappée","Remeha","Wolf","Autre"];
 const MARQUES_CLIM = ["Daikin","Mitsubishi Electric","Mitsubishi Heavy","Atlantic","Hitachi","Toshiba","Fujitsu","Samsung","LG","Panasonic","Gree","Carrier","Airwell","Thermor","Autre"];
@@ -857,7 +858,7 @@ function DocAttestation({doc, client, societe, onClose}) {
   const isFioul=doc.combustible==="Fioul"||doc.type==="Attestation Fioul";
   const isClim=doc.type==="Attestation Clim";
   const isPac=doc.type==="Attestation PAC";
-  const checkList=isClim?CHECKS_CLIM:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
+  const checkList=isClim?CHECKS_CLIM:isPac?CHECKS_PAC:isFioul?CHECKS_FIOUL:CHECKS_GAZ;
   const checks=doc.checks||{};
   const equip=doc.equip||{};
   const nonConf=(doc.nonConformites||[]).filter(n=>n.trim());
@@ -1039,6 +1040,10 @@ function DocAttestation({doc, client, societe, onClose}) {
               <div className="a4-sec-t">Travaux réalisés & Observations</div>
               <div className="a4-travaux" style={{minHeight:"9mm"}}>{doc.observations||""}</div>
             </div>
+            {doc.conseilsClient&&<div className="a4-sec">
+              <div className="a4-sec-t">Conseils au client</div>
+              <div className="a4-travaux" style={{minHeight:"7mm"}}>{doc.conseilsClient}</div>
+            </div>}
           </div>
 
           {/* COLONNE DROITE : Mesures + Rendement + Classif + Non-conf */}
@@ -1066,10 +1071,14 @@ function DocAttestation({doc, client, societe, onClose}) {
                 {isClim&&<><div className="a4-ci"><div className="cl">T. soufflage</div><div className="cv">{comb.tempSoufflage||"—"}</div><div className="cu">°C</div></div>
                 <div className="a4-ci"><div className="cl">T. reprise</div><div className="cv">{comb.tempReprise||"—"}</div><div className="cu">°C</div></div>
                 <div className="a4-ci"><div className="cl">Écart ΔT</div><div className="cv">{comb.tempSoufflage&&comb.tempReprise?Math.abs(Number(comb.tempReprise)-Number(comb.tempSoufflage)):"—"}</div><div className="cu">°C</div></div></>}
-                {isPac&&<><div className="a4-ci"><div className="cl">T. départ</div><div className="cv">{comb.tempDepart||"—"}</div><div className="cu">°C</div></div>
-                <div className="a4-ci"><div className="cl">T. retour</div><div className="cv">{comb.tempRetour||"—"}</div><div className="cu">°C</div></div>
-                <div className="a4-ci"><div className="cl">Pression</div><div className="cv">{comb.pression||"—"}</div><div className="cu">bar</div></div></>}
+                {isPac&&<><div className="a4-ci"><div className="cl">T. intérieure</div><div className="cv">{comb.tempInt||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">T. extérieure</div><div className="cv">{comb.tempExt||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">T. départ eau</div><div className="cv">{comb.tempDepart||"—"}</div><div className="cu">°C</div></div>
+                <div className="a4-ci"><div className="cl">Pression circuit</div><div className="cv">{comb.pression||"—"}</div><div className="cu">bar</div></div>
+                <div className="a4-ci"><div className="cl">Tension statique</div><div className="cv">{comb.tensionStatique||"—"}</div><div className="cu">V</div></div>
+                <div className="a4-ci"><div className="cl">Tension dynamique</div><div className="cv">{comb.tensionDynamique||"—"}</div><div className="cu">V</div></div></>}
               </div>
+              {isPac&&comb.appareilsMesure&&<div style={{fontSize:"6.4pt",color:"var(--ae-grey)",marginTop:"1.5mm"}}><strong>Appareils de mesure :</strong> {comb.appareilsMesure}</div>}
             </div>}
 
             {!isClim&&!isPac&&<div className="a4-sec">
@@ -1643,7 +1652,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       const d=selData[i]||{};
       if(sel.action==="attestation"){
         const attType=getAttType(eq);
-        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,montantEncaisse:f.montantEncaisse,modeReglement:f.modeReglement,sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempRetour:d.tempRetour,pression:d.pression},nonConformites:d.nonConformites||[]});
+        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",conseilsClient:d.conseilsClient||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,montantEncaisse:f.montantEncaisse,modeReglement:f.modeReglement,sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempInt:d.tempInt,tempExt:d.tempExt,tensionStatique:d.tensionStatique,tensionDynamique:d.tensionDynamique,appareilsMesure:d.appareilsMesure,pression:d.pression},nonConformites:d.nonConformites||[]});
       } else if(sel.action==="depannage"){
         newDocs.push({type:"Dépannage",typeIntervention:"Dépannage",numero:`DEP-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:d.observations||"",piecesChangees:d.piecesChangees||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:eq,sigTech,sigClient});
       } else if(sel.action==="remplacement"){
@@ -1753,9 +1762,14 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
               <div className="form-group"><label>Temp. reprise (°C)</label><input type="number" step="0.1" value={curData.tempReprise||""} onChange={e=>setCurData("tempReprise",e.target.value)}/></div>
             </>}
             {isPac&&<>
-              <div className="form-group"><label>Temp. départ (°C)</label><input type="number" step="0.1" value={curData.tempDepart||""} onChange={e=>setCurData("tempDepart",e.target.value)}/></div>
-              <div className="form-group"><label>Temp. retour (°C)</label><input type="number" step="0.1" value={curData.tempRetour||""} onChange={e=>setCurData("tempRetour",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. intérieure / ambiance (°C)</label><input type="number" step="0.1" value={curData.tempInt||""} onChange={e=>setCurData("tempInt",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. extérieure (°C)</label><input type="number" step="0.1" value={curData.tempExt||""} onChange={e=>setCurData("tempExt",e.target.value)}/></div>
+              <div className="form-group"><label>Temp. départ d'eau (°C)</label><input type="number" step="0.1" value={curData.tempDepart||""} onChange={e=>setCurData("tempDepart",e.target.value)}/></div>
               <div className="form-group"><label>Pression circuit (bar)</label><input type="number" step="0.1" value={curData.pression||""} onChange={e=>setCurData("pression",e.target.value)}/></div>
+              <div className="form-group"><label>Tension statique (V)</label><input type="number" step="0.1" value={curData.tensionStatique||""} onChange={e=>setCurData("tensionStatique",e.target.value)}/></div>
+              <div className="form-group"><label>Tension dynamique (V)</label><input type="number" step="0.1" value={curData.tensionDynamique||""} onChange={e=>setCurData("tensionDynamique",e.target.value)}/></div>
+              <div className="form-group"><label>Appareils de mesure utilisés</label><input value={curData.appareilsMesure||""} onChange={e=>setCurData("appareilsMesure",e.target.value)} placeholder="Marque + référence"/></div>
+              <div className="form-group full"><label>Conseils au client</label><textarea value={curData.conseilsClient||""} onChange={e=>setCurData("conseilsClient",e.target.value)}/></div>
             </>}
           </div>
         </div>}
