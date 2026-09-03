@@ -399,6 +399,17 @@ const newEquip = (type="Chaudière gaz") => ({
 const fullAddr = c => c ? [c.adresse, c.codePostal, c.ville].filter(Boolean).join(", ") : "";
 const mapsUrl = c => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddr(c))}`;
 const dureeLabel = min => { if(!min) return ""; const h=Math.floor(min/60), m=min%60; return h>0?`${h}h${m>0?String(m).padStart(2,"0"):""}`:`${m}min`; };
+// Mention réglementaire obligatoire liée au taux de CO mesuré dans l'ambiance
+// (arrêté du 24 juillet 2020) : la valeur mesurée seule ne suffit pas, l'attestation
+// doit porter la phrase correspondant au seuil atteint.
+const mentionCO = ppm => {
+  if(ppm===""||ppm===null||ppm===undefined) return null;
+  const v=Number(ppm);
+  if(isNaN(v)) return null;
+  if(v<10) return {niveau:"ok", texte:"La situation est normale."};
+  if(v<=50) return {niveau:"alerte", texte:"Il y a anomalie de fonctionnement nécessitant impérativement des investigations complémentaires concernant le tirage du conduit de fumée et la ventilation du local."};
+  return {niveau:"danger", texte:"Il y a un danger grave et imminent nécessitant la mise à l'arrêt de la chaudière et la recherche du dysfonctionnement avant remise en service."};
+};
 const AddrLink = ({client, style}) => (
   <a href={mapsUrl(client)} target="_blank" rel="noopener noreferrer"
     style={{color:"var(--info)",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,...style}}>
@@ -1063,6 +1074,15 @@ function DocAttestation({doc, client, societe, onClose}) {
                 {isFioul&&<><div className="a4-ci"><div className="cl">Gicleur</div><div className="cv">{doc.vierge?"":comb.gicleur||equip.debitGicleur||"—"}</div><div className="cu">{equip.angleGicleur||""}</div></div>
                 <div className="a4-ci"><div className="cl">P. pompe</div><div className="cv">{doc.vierge?"":comb.pressionPompe||"—"}</div><div className="cu">bar</div></div></>}
               </div>
+              {!doc.vierge&&(()=>{
+                const m=mentionCO(comb.coAmbiant);
+                if(!m) return null;
+                const col=m.niveau==="ok"?"var(--ae-teal)":m.niveau==="alerte"?"#d97706":"#c62828";
+                return <div style={{border:`1.3px solid ${col}`,borderRadius:5,padding:"1.8mm 2.2mm",marginBottom:"1.8mm"}}>
+                  <div style={{fontSize:"6.2pt",fontWeight:700,color:col,marginBottom:"0.6mm"}}>Teneur en CO dans l'ambiance : {comb.coAmbiant} ppm</div>
+                  <div style={{fontSize:"6.4pt",color:"#333",lineHeight:1.4}}>{m.texte}</div>
+                </div>;
+              })()}
             </div>}
 
             {(isClim||isPac)&&<div className="a4-sec">
@@ -1078,7 +1098,6 @@ function DocAttestation({doc, client, societe, onClose}) {
                 <div className="a4-ci"><div className="cl">Tension statique</div><div className="cv">{comb.tensionStatique||"—"}</div><div className="cu">V</div></div>
                 <div className="a4-ci"><div className="cl">Tension dynamique</div><div className="cv">{comb.tensionDynamique||"—"}</div><div className="cu">V</div></div></>}
               </div>
-              {isPac&&comb.appareilsMesure&&<div style={{fontSize:"6.4pt",color:"var(--ae-grey)",marginTop:"1.5mm"}}><strong>Appareils de mesure :</strong> {comb.appareilsMesure}</div>}
             </div>}
 
             {!isClim&&!isPac&&<div className="a4-sec">
@@ -1133,10 +1152,16 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
         </div>
         {societe.iban&&<div style={{marginTop:"2mm",fontSize:"6.4pt",color:"var(--ae-grey)"}}><strong style={{color:"var(--ae-navy)"}}>IBAN — {societe.nom} :</strong> {societe.iban}</div>}
+        {societe.analyseurModele&&<div style={{marginTop:"1.2mm",fontSize:"6.2pt",color:"var(--ae-grey)"}}>
+          <strong style={{color:"var(--ae-navy)"}}>Appareil de mesure utilisé :</strong> {societe.analyseurModele}
+          {societe.analyseurNumSerie?` — n° ${societe.analyseurNumSerie}`:""}
+          {societe.analyseurCertificat?` — certificat n° ${societe.analyseurCertificat}`:""}
+          {societe.analyseurDateVerif?` — vérifié le ${fmt(societe.analyseurDateVerif)}`:""}
+        </div>}
         <div className="a4-footer">
           {isClim||isPac
-            ? `Attestation délivrée conformément au décret n°2020-912 du 28 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
-            : `Attestation délivrée conformément à l'arrêté du 15 septembre 2009 — ${societe.nom} — SIRET ${societe.siret}`
+            ? `Attestation délivrée conformément au décret n°2020-912 du 28 juillet 2020 et à l'arrêté du 24 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
+            : `Attestation délivrée conformément à l'arrêté du 15 septembre 2009 modifié par l'arrêté du 24 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
           }
         </div>
       </div>
@@ -1652,7 +1677,7 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
       const d=selData[i]||{};
       if(sel.action==="attestation"){
         const attType=getAttType(eq);
-        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",conseilsClient:d.conseilsClient||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,montantEncaisse:f.montantEncaisse,modeReglement:f.modeReglement,sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempInt:d.tempInt,tempExt:d.tempExt,tensionStatique:d.tensionStatique,tensionDynamique:d.tensionDynamique,appareilsMesure:d.appareilsMesure,pression:d.pression},nonConformites:d.nonConformites||[]});
+        newDocs.push({type:attType,numero:`ATT-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,statut:"Émise",combustible:d.combustible||(eq.type==="Chaudière fioul"?"Fioul":"Gaz"),equip:eq,checks:d.checks||{},observations:d.observations||"",conseilsClient:d.conseilsClient||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,montantEncaisse:f.montantEncaisse,modeReglement:f.modeReglement,sigTech,sigClient,combustion:{coAmbiant:d.coAmbiant,coFumees:d.coFumees,co2:d.co2,o2:d.o2,tempFumees:d.tempFumees,tempAir:d.tempAir,rendement:d.rendement,nox:d.nox,gicleur:d.gicleur,pressionPompe:d.pressionPompe,tempSoufflage:d.tempSoufflage,tempReprise:d.tempReprise,tempDepart:d.tempDepart,tempInt:d.tempInt,tempExt:d.tempExt,tensionStatique:d.tensionStatique,tensionDynamique:d.tensionDynamique,pression:d.pression},nonConformites:d.nonConformites||[]});
       } else if(sel.action==="depannage"){
         newDocs.push({type:"Dépannage",typeIntervention:"Dépannage",numero:`DEP-${f.numero}${i>0?`-${i+1}`:""}`,date:f.date,clientId:client.id,rdvId:rdv.id,tva:10,statut:"Émise",lignes:[],observations:d.observations||"",piecesChangees:d.piecesChangees||"",heureArrivee:f.heureArrivee,heureDepart:f.heureDepart,equip:eq,sigTech,sigClient});
       } else if(sel.action==="remplacement"){
@@ -1768,9 +1793,8 @@ function WizardAgenda({rdv, client, docs, catalogue, onSave, onClose}) {
               <div className="form-group"><label>Pression circuit (bar)</label><input type="number" step="0.1" value={curData.pression||""} onChange={e=>setCurData("pression",e.target.value)}/></div>
               <div className="form-group"><label>Tension statique (V)</label><input type="number" step="0.1" value={curData.tensionStatique||""} onChange={e=>setCurData("tensionStatique",e.target.value)}/></div>
               <div className="form-group"><label>Tension dynamique (V)</label><input type="number" step="0.1" value={curData.tensionDynamique||""} onChange={e=>setCurData("tensionDynamique",e.target.value)}/></div>
-              <div className="form-group"><label>Appareils de mesure utilisés</label><input value={curData.appareilsMesure||""} onChange={e=>setCurData("appareilsMesure",e.target.value)} placeholder="Marque + référence"/></div>
-              <div className="form-group full"><label>Conseils au client</label><textarea value={curData.conseilsClient||""} onChange={e=>setCurData("conseilsClient",e.target.value)}/></div>
             </>}
+            <div className="form-group full"><label>Conseils au client <span style={{fontWeight:400,color:"var(--muted)"}}>(mention obligatoire : bon usage, améliorations possibles, intérêt d'un remplacement)</span></label><textarea value={curData.conseilsClient||""} onChange={e=>setCurData("conseilsClient",e.target.value)}/></div>
           </div>
         </div>}
         {isAttSel&&<div className="wizard-step">
@@ -2407,6 +2431,11 @@ function PageSettings({societe, setSociete, allData, onImport, theme, setTheme})
         <div className="form-group"><label>Nom du technicien</label><input value={f.technicien||""} onChange={e=>s("technicien",e.target.value)}/></div>
         <div className="form-group"><label>N° RGE</label><input value={f.rge||""} onChange={e=>s("rge",e.target.value)}/></div>
         <div className="form-group full"><label>IBAN</label><input value={f.iban||""} onChange={e=>s("iban",e.target.value)}/></div>
+        <div style={{gridColumn:"1/-1",marginTop:8,fontSize:"0.75rem",fontWeight:700,color:"var(--muted)",textTransform:"uppercase",borderTop:"1px solid var(--border)",paddingTop:14}}>🔬 Analyseur de combustion <span style={{fontWeight:400,textTransform:"none"}}>(reporté automatiquement sur les attestations — obligatoire)</span></div>
+        <div className="form-group"><label>Marque / Modèle</label><input value={f.analyseurModele||""} onChange={e=>s("analyseurModele",e.target.value)} placeholder="ex: ecom J2KN"/></div>
+        <div className="form-group"><label>N° appareil</label><input value={f.analyseurNumSerie||""} onChange={e=>s("analyseurNumSerie",e.target.value)} placeholder="ex: CL25608"/></div>
+        <div className="form-group"><label>N° certificat vérification</label><input value={f.analyseurCertificat||""} onChange={e=>s("analyseurCertificat",e.target.value)} placeholder="ex: 80643"/></div>
+        <div className="form-group"><label>Date dernière vérification</label><input type="date" value={f.analyseurDateVerif||""} onChange={e=>s("analyseurDateVerif",e.target.value)}/></div>
       </div>
       <div className="form-actions">
         <button className="btn btn-primary" disabled={saved} onClick={()=>setSociete(f)}>{saved?"✓ À jour":"Enregistrer"}</button>
