@@ -947,8 +947,8 @@ function DocAttestation({doc, client, societe, onClose}) {
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Appareil</div>
-            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Marque / Modèle ext.</label><div className="v">{equip.marque||equip.marqueClim||equip.marquePac||"—"} {equip.modele||equip.modeleExt||equip.modelePac||""}</div></div>
-            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>N° Série ext.</label><div className="v">{equip.numSerie||equip.numSerieExt||equip.numSerieClim||equip.numSeriePac||"—"}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Marque / Modèle ext.</label><div className="v">{isClim?`${equip.marqueClim||""} ${equip.modeleExt||""}`.trim()||"—":isPac?`${equip.marquePac||""} ${equip.modelePac||""}`.trim()||"—":`${equip.marque||""} ${equip.modele||""}`.trim()||"—"}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>N° Série ext.</label><div className="v">{isClim?(equip.numSerieExt||equip.numSerieClim||"—"):isPac?(equip.numSeriePac||"—"):(equip.numSerie||"—")}</div></div>
             {(equip.unitesInt||[]).length>0&&(equip.unitesInt||[]).map((ui,i)=>(
               <div key={i} style={{marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`}}>
                 <div style={{fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
@@ -956,9 +956,16 @@ function DocAttestation({doc, client, societe, onClose}) {
                 {ui.numSerie&&<div className="a4-f"><label>N° Série</label><div className="v">{ui.numSerie}</div></div>}
               </div>
             ))}
+            {isPac&&(equip.marqueIntPac||equip.modeleIntPac||equip.numSerieIntPac)&&(
+              <div style={{marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`}}>
+                <div style={{fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>🏠 Unité intérieure</div>
+                {(equip.marqueIntPac||equip.modeleIntPac)&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Marque / Modèle</label><div className="v">{equip.marqueIntPac||""} {equip.modeleIntPac||""}</div></div>}
+                {equip.numSerieIntPac&&<div className="a4-f"><label>N° Série</label><div className="v">{equip.numSerieIntPac}</div></div>}
+              </div>
+            )}
             <div className="a4-g2" style={{gap:"2.2mm"}}>
               <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
-              <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{equip.fluideClim||equip.fluidePac||equip.gaz||"—"}</div></div>
+              <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{isClim?(equip.fluideClim||"—"):isPac?(equip.fluidePac||"—"):(equip.gaz||"—")}</div></div>
             </div>
           </div>
         </div>
@@ -2097,7 +2104,7 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
   const [preview,setPreview]=useState(null);
   const equipFilters=["Tous","Chaudière gaz","Chaudière fioul","Climatisation","Pompe à chaleur"];
   const filtered=clients.filter(c=>{
-    const txt=`${c.prenom} ${c.nom} ${c.tel} ${fullAddr(c)} ${(c.equipements||[]).map(e=>`${e.marque||""} ${e.marqueClim||""} ${e.type}`).join(" ")}`.toLowerCase();
+    const txt=`${c.prenom} ${c.nom} ${c.tel} ${c.email||""} ${fullAddr(c)} ${(c.equipements||[]).map(e=>`${e.marque||""} ${e.marqueClim||""} ${e.type}`).join(" ")}`.toLowerCase();
     const matchSearch=txt.includes(search.toLowerCase());
     const matchFilter=filterEquip==="Tous"||(c.equipements||[]).some(e=>e.type===filterEquip);
     return matchSearch&&matchFilter;
@@ -2137,7 +2144,13 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
             <div>
               <div style={{fontFamily:"var(--font-head)",fontSize:"1.7rem",fontWeight:900}}>{detail.prenom} {detail.nom}</div>
-              <div style={{fontSize:"0.83rem",color:"var(--muted)",marginTop:6}}><AddrLink client={detail}/><br/>📞 {detail.tel} · ✉️ {detail.email}</div>
+              <div style={{fontSize:"0.83rem",color:"var(--muted)",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+                <AddrLink client={detail}/>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"2px 12px"}}>
+                  {detail.tel&&<a href={`tel:${String(detail.tel).replace(/\s/g,"")}`} style={{color:"var(--info)",textDecoration:"none"}}>📞 {detail.tel}</a>}
+                  {detail.email&&<a href={`mailto:${detail.email}`} style={{color:"var(--info)",textDecoration:"none"}}>✉️ {detail.email}</a>}
+                </div>
+              </div>
               {detail.notes&&<div style={{fontSize:"0.78rem",color:"var(--muted)",marginTop:3}}>📝 {detail.notes}</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
@@ -2196,7 +2209,11 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
           return(<div key={c.id} className="client-card" onClick={()=>setDetail(c)}>
             <div style={{flex:1}}>
               <div style={{fontWeight:600,fontSize:"0.95rem"}}>{c.prenom} {c.nom} <span className="badge badge-neutral" style={{marginLeft:6,fontSize:"0.68rem"}}>{c.type}</span></div>
-              <div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:3}}><AddrLink client={c}/> · 📞 {c.tel}</div>
+              <div style={{fontSize:"0.8rem",color:"var(--muted)",marginTop:3,display:"flex",flexWrap:"wrap",gap:"2px 10px",alignItems:"center"}}>
+                <AddrLink client={c}/>
+                {c.tel&&<a href={`tel:${String(c.tel).replace(/\s/g,"")}`} onClick={e=>e.stopPropagation()} style={{color:"var(--info)",textDecoration:"none"}}>📞 {c.tel}</a>}
+                {c.email&&<a href={`mailto:${c.email}`} onClick={e=>e.stopPropagation()} style={{color:"var(--info)",textDecoration:"none"}}>✉️ {c.email}</a>}
+              </div>
               <div style={{display:"flex",gap:6,marginTop:5,flexWrap:"wrap"}}>{equips.map((e,i)=><span key={i} className="badge badge-accent" style={{fontSize:"0.65rem"}}>{EQUIP_ICON(e.type)} {e.marque||e.marqueClim||e.type}</span>)}</div>
             </div>
             <div style={{display:"flex",gap:8,flexShrink:0}} onClick={e=>e.stopPropagation()}>
