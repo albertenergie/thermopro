@@ -568,6 +568,18 @@ function DocWrapper({title, onClose, mailInfo, children}) {
     const imgH = canvas.height;
     // Hauteur en mm d'une page A4 en pixels
     const pageHeightPx = imgW * (pdfH / pdfW);
+
+    // Si le contenu ne dépasse que légèrement (< 15 %), on le réduit pour qu'il
+    // tienne sur une seule page plutôt que de renvoyer 2-3 lignes orphelines
+    // (typiquement le pied de page réglementaire) sur une 2e page.
+    if(imgH > pageHeightPx && imgH <= pageHeightPx * 1.15) {
+      const hMm = imgH * pdfW / imgW;
+      const scale = pdfH / hMm;
+      const wMm = pdfW * scale;
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", (pdfW - wMm) / 2, 0, wMm, pdfH);
+      return pdf;
+    }
+
     let yPx = 0;
     let page = 0;
     while(yPx < imgH) {
@@ -1163,7 +1175,6 @@ function DocAttestation({doc, client, societe, onClose}) {
             <div className="a4-sig-line">Date et signature</div>
           </div>
         </div>
-        {societe.iban&&<div style={{marginTop:"2mm",fontSize:"6.4pt",color:"var(--ae-grey)"}}><strong style={{color:"var(--ae-navy)"}}>IBAN — {societe.nom} :</strong> {societe.iban}</div>}
         <div className="a4-footer">
           {isClim||isPac
             ? `Attestation délivrée conformément au décret n°2020-912 du 28 juillet 2020 et à l'arrêté du 24 juillet 2020 — ${societe.nom} — SIRET ${societe.siret}`
@@ -1496,6 +1507,35 @@ function ModalClient({client, onSave, onClose}) {
   const updateEquip=(i,e)=>setF(p=>{const eq=[...p.equipements];eq[i]=e;return{...p,equipements:eq};});
   const delEquip=(i)=>setF(p=>({...p,equipements:p.equipements.filter((_,j)=>j!==i)}));
   const photoInputRef=useRef(null);
+  // Autocomplétion d'adresse via le service de géocodage de l'IGN (Base Adresse
+  // Nationale). Gratuit et sans clé. L'ancien api-adresse.data.gouv.fr a été
+  // décommissionné fin janvier 2026.
+  const [addrSug,setAddrSug]=useState([]);
+  const [showAddrSug,setShowAddrSug]=useState(false);
+  const addrTimer=useRef(null);
+  const chercherAdresse=q=>{
+    clearTimeout(addrTimer.current);
+    if(!q||q.length<4){ setAddrSug([]); return; }
+    // On attend 350 ms après la dernière frappe pour ne pas lancer une requête par lettre
+    addrTimer.current=setTimeout(async()=>{
+      try{
+        const r=await fetch(`https://data.geopf.fr/geocodage/search/?q=${encodeURIComponent(q)}&index=address&limit=5&autocomplete=1`);
+        if(!r.ok) return;
+        const d=await r.json();
+        setAddrSug((d.features||[]).map(ft=>({
+          label:ft.properties?.label||"",
+          voie:[ft.properties?.housenumber,ft.properties?.street].filter(Boolean).join(" ")||ft.properties?.name||"",
+          cp:ft.properties?.postcode||"",
+          ville:ft.properties?.city||"",
+        })).filter(a=>a.label));
+        setShowAddrSug(true);
+      }catch{ /* hors ligne ou service indisponible : saisie manuelle, rien à signaler */ }
+    },350);
+  };
+  const choisirAdresse=a=>{
+    setF(p=>({...p,adresse:a.voie||a.label,codePostal:a.cp,ville:a.ville}));
+    setAddrSug([]); setShowAddrSug(false);
+  };
   const handlePhoto=e=>{const files=Array.from(e.target.files);if((f.photos||[]).length+files.length>5){alert("Max 5 photos");return;}files.forEach(file=>{const r=new FileReader();r.onload=ev=>setF(p=>({...p,photos:[...(p.photos||[]),{url:ev.target.result,name:file.name,date:new Date().toISOString().slice(0,10)}]}));r.readAsDataURL(file);});};
   const delPhoto=i=>setF(p=>({...p,photos:p.photos.filter((_,j)=>j!==i)}));
   return (
@@ -1504,7 +1544,14 @@ function ModalClient({client, onSave, onClose}) {
       <div className="form-grid">
         <div className="form-group"><label>Prénom</label><input value={f.prenom} onChange={e=>s("prenom",e.target.value)}/></div>
         <div className="form-group"><label>Nom *</label><input value={f.nom} onChange={e=>s("nom",e.target.value)}/></div>
-        <div className="form-group full"><label>Adresse</label><input value={f.adresse} onChange={e=>s("adresse",e.target.value)}/></div>
+        <div className="form-group full" style={{position:"relative"}}>
+          <label>Adresse <span style={{fontWeight:400,color:"var(--muted)"}}>(tape le début, la ville et le code postal se remplissent seuls)</span></label>
+          <input value={f.adresse} onChange={e=>{s("adresse",e.target.value);chercherAdresse(e.target.value);}} onFocus={()=>addrSug.length>0&&setShowAddrSug(true)} placeholder="ex: 10 rue du tremolis Beziers"/>
+          {showAddrSug&&addrSug.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10,zIndex:400,maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px #00000060",marginTop:4}}>
+            {addrSug.map((a,i)=><div key={i} onClick={()=>choisirAdresse(a)} style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid var(--border)",fontSize:"0.85rem"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface2)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>📍 {a.label}</div>)}
+            <div onClick={()=>setShowAddrSug(false)} style={{padding:"7px 14px",cursor:"pointer",fontSize:"0.75rem",color:"var(--muted)",textAlign:"center"}}>Saisir manuellement</div>
+          </div>}
+        </div>
         <div className="form-group"><label>Code postal</label><input value={f.codePostal||""} onChange={e=>s("codePostal",e.target.value)}/></div>
         <div className="form-group"><label>Ville</label><input value={f.ville||""} onChange={e=>s("ville",e.target.value)}/></div>
         <div className="form-group"><label>Email</label><input value={f.email} onChange={e=>s("email",e.target.value)}/></div>
