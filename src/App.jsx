@@ -36,10 +36,23 @@ try {
 }
 const USER_ID = "pierre";
 
+// Alerte visible en cas d'échec d'enregistrement (au lieu d'une simple erreur
+// console invisible). Limitée à une alerte toutes les 30 s pour ne pas harceler.
+let derniereAlerteSauvegarde = 0;
+function alerteEchecSauvegarde(message) {
+  const now = Date.now();
+  if (now - derniereAlerteSauvegarde < 30000) return;
+  derniereAlerteSauvegarde = now;
+  alert(message);
+}
+
 async function sauvegarder(col, data) {
   try {
     await setDoc(doc(db, "thermopro", USER_ID, col, "data"), { value: JSON.stringify(data) });
-  } catch(e) { console.error("Erreur sauvegarde:", e); }
+  } catch(e) {
+    console.error("Erreur sauvegarde:", e);
+    alerteEchecSauvegarde(`⚠️ L'enregistrement en ligne a échoué (${col}). Vérifiez votre connexion et ne fermez pas l'appli.\n\nDétail : ${e.message}`);
+  }
 }
 
 async function charger(col) {
@@ -50,32 +63,86 @@ async function charger(col) {
   return null;
 }
 
-// --- Stockage dédié pour "docs" (bons, attestations, factures...) ---
-// Chaque document est stocké individuellement (sous-collection docsItems)
-// au lieu d'un seul bloc géant, pour ne jamais dépasser la limite de 1 Mo
-// par document Firestore (les signatures en image font grossir le bloc).
-async function sauvegarderDocs(docsArray, previousIds) {
-  try {
-    const currentIds = new Set(docsArray.map(d=>String(d.id)));
-    const echecs=[];
-    await Promise.all(docsArray.map(d=>
-      setDoc(doc(db,"thermopro",USER_ID,"docsItems",String(d.id)), d).catch(e=>{console.error("Erreur sauvegarde doc",d.id,e); echecs.push(d);})
-    ));
-    const toDelete=[...previousIds].filter(id=>!currentIds.has(id));
-    await Promise.all(toDelete.map(id=>
-      deleteDoc(doc(db,"thermopro",USER_ID,"docsItems",id)).catch(()=>{})
-    ));
-    if(echecs.length>0) alert(`⚠️ ${echecs.length} document(s) n'ont pas pu être sauvegardés en ligne. Vérifiez votre connexion et réessayez (ne fermez pas l'appli).`);
-    return currentIds;
-  } catch(e) { console.error("Erreur sauvegarde docs:", e); return previousIds; }
+// --- Stockage élément par élément (clients, bons, attestations, factures...) ---
+// Chaque élément est stocké dans son propre document Firestore (sous-collection
+// "clientsItems" ou "docsItems") au lieu d'un seul bloc géant, pour ne jamais
+// dépasser la limite de 1 Mo par document Firestore (signatures, photos...).
+// snapRef garde l'état du dernier envoi : seuls les éléments modifiés, ajoutés ou
+// supprimés depuis sont envoyés. Les écritures partent immédiatement (le cache
+// hors-ligne les garde si le réseau est absent) ; en cas d'échec, l'élément est
+// retiré de snapRef pour être renvoyé au prochain enregistrement.
+function sauvegarderItems(col, items, snapRef, libelle) {
+  const snap = snapRef.current;
+  const next = new Map();
+  const echecs = [];
+  const ecritures = [];
+  items.forEach(item => {
+    const id = String(item.id);
+    const json = JSON.stringify(item);
+    next.set(id, json);
+    if (snap.get(id) === json) return;
+    ecritures.push(
+      setDoc(doc(db, "thermopro", USER_ID, col, id), item).catch(e => {
+        console.error(`Erreur sauvegarde ${libelle}`, id, e);
+        echecs.push(id);
+        if (snapRef.current.get(id) === json) snapRef.current.delete(id);
+      })
+    );
+  });
+  [...snap.keys()].filter(id => !next.has(id)).forEach(id => {
+    ecritures.push(
+      deleteDoc(doc(db, "thermopro", USER_ID, col, id)).catch(e => {
+        console.error(`Erreur suppression ${libelle}`, id, e);
+        if (!snapRef.current.has(id)) snapRef.current.set(id, snap.get(id));
+      })
+    );
+  });
+  snapRef.current = next;
+  return Promise.all(ecritures).then(() => {
+    if (echecs.length > 0) alerteEchecSauvegarde(`⚠️ ${echecs.length} ${libelle} n'ont pas pu être enregistré(s) en ligne. Vérifiez votre connexion et réessayez (ne fermez pas l'appli).`);
+    return echecs.length === 0;
+  });
 }
 
-async function chargerDocsItems() {
+// Retourne null en cas d'erreur (et non une liste vide) : l'appli refuse alors
+// de démarrer plutôt que d'écraser les vraies données avec des données vides.
+async function chargerItems(col) {
   try {
-    const snap = await getDocs(collection(db,"thermopro",USER_ID,"docsItems"));
-    return snap.docs.map(d=>d.data());
-  } catch(e) { console.error("Erreur chargement docs:", e); return []; }
+    const snap = await getDocs(collection(db, "thermopro", USER_ID, col));
+    return snap.docs.map(d => d.data()).sort((a, b) => Number(a.id) - Number(b.id));
+  } catch(e) { console.error(`Erreur chargement ${col}:`, e); return null; }
 }
+
+const snapshotItems = items => new Map(items.map(i => [String(i.id), JSON.stringify(i)]));
+
+// Compression des photos : redimensionne à 1024 px maximum et enregistre en JPEG.
+// Une photo de téléphone passe de plusieurs Mo à environ 100-200 Ko, largement
+// suffisant pour voir une installation, et la fiche client reste sous 1 Mo.
+function compresserImage(file, maxDim = 1024, qualite = 0.6) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("Lecture de la photo impossible"));
+    r.onload = ev => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Format de photo non reconnu"));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", qualite));
+      };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+// Limite de sécurité pour une fiche client (Firestore refuse au-delà de 1 Mo)
+const TAILLE_MAX_CLIENT = 900000;
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300;600;900&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -354,6 +421,7 @@ const CHECKS_PAC = ["Relevé température unité intérieure / ambiance","Relev�
 const MARQUES_CHAUDIERE = ["Viessmann","Atlantic","Saunier Duval","De Dietrich","Bosch","Vaillant","Chaffoteaux","Elm Leblanc","Frisquet","Chappée","Remeha","Wolf","Autre"];
 const MARQUES_CLIM = ["Daikin","Mitsubishi Electric","Mitsubishi Heavy","Atlantic","Hitachi","Toshiba","Fujitsu","Samsung","LG","Panasonic","Gree","Carrier","Airwell","Thermor","Autre"];
 const MARQUES_PAC = ["Atlantic","Mitsubishi Electric","Daikin","Hitachi","Viessmann","De Dietrich","Bosch","Vaillant","Saunier Duval","Thermor","Ariston","Chaffoteaux","Autre"];
+const MARQUES_BRULEUR = ["Riello","Cuenod","Elco","Weishaupt","De Dietrich","Chappée","Bentone","Ecoflam","Lamborghini","Oertli","Baltur","Autre"];
 
 // --- Marques personnalisées mémorisées ---
 let MARQUES_PERSO = (()=>{ try{ return JSON.parse(localStorage.getItem("marques-perso")||"[]"); }catch{ return []; } })();
@@ -387,14 +455,28 @@ const SPECTRES_GICLEUR = ["S (solide)","B (creux)","H (mi-creux)","NS (semi-soli
 
 const newEquip = (type="Chaudière gaz") => ({
   id: Date.now()+Math.random(), type,
-  gaz:"Gaz naturel", marque:"", modele:"", numSerie:"", puissance:"", annee:"",
-  typeBruleur:"", marqueBruleur:"", modeleBruleur:"",
+  // Type de gaz uniquement pour les appareils gaz (évitait l'affichage
+  // "Gaz naturel" sur les chaudières fioul)
+  gaz:(type==="Chaudière gaz"||type==="Chauffe-eau gaz")?"Gaz naturel":"", marque:"", modele:"", numSerie:"", puissance:"", annee:"",
+  typeBruleur:"", marqueBruleur:"", modeleBruleur:"", numSerieBruleur:"",
   conduit:"Ventouse",
   marqueGicleur:"Steinen", debitGicleur:"", angleGicleur:"60°", spectreGicleur:"S (solide)",
   marqueClim:"", typeClim:"Simple split", numSerieClim:"", puissanceClim:"", anneeClim:"",
   marquePac:"", modelePac:"", numSeriePac:"", puissancePac:"", anneePac:"", copPac:"",
   contrat:"", numContrat:"", echeanceContrat:"", notes:"",
 });
+
+// Textes brûleur / gicleur pour les documents (chaudière fioul)
+const texteBruleur = e => {
+  const mm=[e?.marqueBruleur,e?.modeleBruleur].filter(Boolean).join(" ");
+  const ns=e?.numSerieBruleur?`n° ${e.numSerieBruleur}`:"";
+  return [mm,ns].filter(Boolean).join(" — ")||"—";
+};
+const texteGicleur = e => {
+  if(!e?.debitGicleur) return "—";
+  const spectre=(e.spectreGicleur||"").split(" ")[0];
+  return [e.marqueGicleur,e.debitGicleur,e.angleGicleur,spectre].filter(Boolean).join(" · ");
+};
 
 const fullAddr = c => c ? [c.adresse, c.codePostal, c.ville].filter(Boolean).join(", ") : "";
 const mapsUrl = c => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddr(c))}`;
@@ -933,6 +1015,8 @@ function DocAttestation({doc, client, societe, onClose}) {
     .a4-footer{margin-top:3mm;padding-top:2mm;border-top:1px solid var(--ae-line);text-align:center;font-size:6.1pt;color:#8b909b;}
     .a4-etat{display:inline-block;background:var(--ae-teal);color:#fff;border-radius:4px;padding:1.5px 7px;font-size:6.8pt;font-weight:700;}
   `;
+  const sousTitre={fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"};
+  const separateur={marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`};
   return (
     <DocWrapper title={`Attestation — ${typeLabel}`} onClose={onClose} mailInfo={client?.email?{to:client.email,subject:`Attestation d'entretien ${doc.numero} — ${societe.nom}`,body:`Bonjour,\n\nVeuillez trouver ci-joint votre attestation d'entretien N° ${doc.numero} du ${fmt(doc.date)}.\n\nCordialement,\n${societe.technicien}\n${societe.nom}`}:null}>
       <style>{CSS_A4}</style>
@@ -955,36 +1039,50 @@ function DocAttestation({doc, client, societe, onClose}) {
           <div className="a4-box blue">
             <div className="a4-sec-t">Client</div>
             <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Nom</label><div className="v">{client?.prenom} {client?.nom}</div></div>
-            <div className="a4-f"><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
+            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Adresse</label><div className="v">{fullAddr(client)}</div></div>
+            <div className="a4-f"><label>Date d'entretien</label><div className="v">{fmt(doc.date)}</div></div>
           </div>
           <div className="a4-box">
             <div className="a4-sec-t">Appareil</div>
-            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Marque / Modèle ext.</label><div className="v">{isClim?`${equip.marqueClim||""} ${equip.modeleExt||""}`.trim()||"—":isPac?`${equip.marquePac||""} ${equip.modelePac||""}`.trim()||"—":`${equip.marque||""} ${equip.modele||""}`.trim()||"—"}</div></div>
-            <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>N° Série ext.</label><div className="v">{isClim?(equip.numSerieExt||equip.numSerieClim||"—"):isPac?(equip.numSeriePac||"—"):(equip.numSerie||"—")}</div></div>
-            {(equip.unitesInt||[]).length>0&&(equip.unitesInt||[]).map((ui,i)=>(
-              <div key={i} style={{marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`}}>
-                <div style={{fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
-                {ui.modele&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Modèle</label><div className="v">{ui.modele}</div></div>}
-                {ui.numSerie&&<div className="a4-f"><label>N° Série</label><div className="v">{ui.numSerie}</div></div>}
-              </div>
-            ))}
-            {isPac&&(equip.marqueIntPac||equip.modeleIntPac||equip.numSerieIntPac)&&(
-              <div style={{marginTop:"1.8mm",paddingTop:"1.8mm",borderTop:`1px solid var(--ae-line)`}}>
-                <div style={{fontSize:"5.6pt",color:"var(--ae-navy)",fontWeight:700,textTransform:"uppercase",marginBottom:"1mm"}}>🏠 Unité intérieure</div>
-                {(equip.marqueIntPac||equip.modeleIntPac)&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Marque / Modèle</label><div className="v">{equip.marqueIntPac||""} {equip.modeleIntPac||""}</div></div>}
-                {equip.numSerieIntPac&&<div className="a4-f"><label>N° Série</label><div className="v">{equip.numSerieIntPac}</div></div>}
-              </div>
+            {isFioul&&!isClim&&!isPac?(
+              <>
+                {/* CHAUDIÈRE FIOUL : chaudière + brûleur + gicleur */}
+                <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>Marque / Modèle</label><div className="v">{`${equip.marque||""} ${equip.modele||""}`.trim()||"—"}</div></div>
+                <div className="a4-g2" style={{gap:"2.2mm"}}>
+                  <div className="a4-f"><label>N° Série</label><div className="v">{equip.numSerie||"—"}</div></div>
+                  <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||"—"}</div></div>
+                </div>
+                <div style={separateur}>
+                  <div style={sousTitre}>🔥 Brûleur</div>
+                  <div className="a4-f" style={{marginBottom:"1mm"}}><label>Marque / Modèle — N° série</label><div className="v">{texteBruleur(equip)}</div></div>
+                  <div className="a4-f"><label>Gicleur</label><div className="v">{texteGicleur(equip)}</div></div>
+                </div>
+              </>
+            ):(
+              <>
+                <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>{isClim||isPac?"Marque / Modèle ext.":"Marque / Modèle"}</label><div className="v">{isClim?`${equip.marqueClim||""} ${equip.modeleExt||""}`.trim()||"—":isPac?`${equip.marquePac||""} ${equip.modelePac||""}`.trim()||"—":`${equip.marque||""} ${equip.modele||""}`.trim()||"—"}</div></div>
+                <div className="a4-f" style={{marginBottom:"1.8mm"}}><label>{isClim||isPac?"N° Série ext.":"N° Série"}</label><div className="v">{isClim?(equip.numSerieExt||equip.numSerieClim||"—"):isPac?(equip.numSeriePac||"—"):(equip.numSerie||"—")}</div></div>
+                {(equip.unitesInt||[]).length>0&&(equip.unitesInt||[]).map((ui,i)=>(
+                  <div key={i} style={separateur}>
+                    <div style={sousTitre}>❄️ Unité int. {(equip.unitesInt||[]).length>1?i+1:""}{ui.emplacement?` — ${ui.emplacement}`:""}</div>
+                    {ui.modele&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Modèle</label><div className="v">{ui.modele}</div></div>}
+                    {ui.numSerie&&<div className="a4-f"><label>N° Série</label><div className="v">{ui.numSerie}</div></div>}
+                  </div>
+                ))}
+                {isPac&&(equip.marqueIntPac||equip.modeleIntPac||equip.numSerieIntPac)&&(
+                  <div style={separateur}>
+                    <div style={sousTitre}>🏠 Unité intérieure</div>
+                    {(equip.marqueIntPac||equip.modeleIntPac)&&<div className="a4-f" style={{marginBottom:"1mm"}}><label>Marque / Modèle</label><div className="v">{equip.marqueIntPac||""} {equip.modeleIntPac||""}</div></div>}
+                    {equip.numSerieIntPac&&<div className="a4-f"><label>N° Série</label><div className="v">{equip.numSerieIntPac}</div></div>}
+                  </div>
+                )}
+                <div className="a4-g2" style={{gap:"2.2mm"}}>
+                  <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
+                  <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{isClim?(equip.fluideClim||"—"):isPac?(equip.fluidePac||"—"):(equip.gaz||"—")}</div></div>
+                </div>
+              </>
             )}
-            <div className="a4-g2" style={{gap:"2.2mm"}}>
-              <div className="a4-f"><label>Puissance</label><div className="v">{equip.puissance||equip.puissanceClim||equip.puissancePac||"—"}</div></div>
-              <div className="a4-f"><label>{isClim||isPac?"Fluide frigorigène":"Type gaz"}</label><div className="v">{isClim?(equip.fluideClim||"—"):isPac?(equip.fluidePac||"—"):(equip.gaz||"—")}</div></div>
-            </div>
           </div>
-        </div>
-
-        {/* DATE + ÉTAT */}
-        <div className="a4-g2" style={{marginBottom:"2.8mm"}}>
-          <div className="a4-f"><label>Date d'entretien</label><div className="v">{fmt(doc.date)}</div></div>
         </div>
 
         {/* LAYOUT 2 COLONNES */}
@@ -1186,7 +1284,7 @@ function DocAttestation({doc, client, societe, onClose}) {
   );
 }
 
-function ScannerOCR({onResult, onClose, equip}) {
+function ScannerOCR({onResult, onClose, equip, cible="appareil"}) {
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const [scanning,setScanning]=useState(false);
@@ -1196,6 +1294,7 @@ function ScannerOCR({onResult, onClose, equip}) {
   const [result,setResult]=useState(null);
   const [cameraActive,setCameraActive]=useState(false);
   const fileRef=useRef(null);
+  const isBruleur=cible==="bruleur";
 
   useEffect(()=>{
     return ()=>{ if(videoRef.current?.srcObject) videoRef.current.srcObject.getTracks().forEach(t=>t.stop()); };
@@ -1246,11 +1345,11 @@ function ScannerOCR({onResult, onClose, equip}) {
       const base64=compressed.split(",")[1];
       const mediaType="image/jpeg";
       setProgress(30);
-      setStatus("Lecture de la plaque...");
+      setStatus(isBruleur?"Lecture de la plaque du brûleur...":"Lecture de la plaque...");
       const response=await fetch("/api/scan",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({image:base64,mediaType})
+        body:JSON.stringify({image:base64,mediaType,cible})
       });
       setProgress(80);
       const parsed=await response.json();
@@ -1262,71 +1361,14 @@ function ScannerOCR({onResult, onClose, equip}) {
     setScanning(false);
   };
 
-  const MARQUES=["Chaffoteaux","Chappée","Chappee","Mitsubishi","Daikin","Toshiba","Panasonic","Samsung","LG","Atlantic","Hitachi","Fujitsu","Carrier","Airwell","Gree","De Dietrich","Saunier Duval","Viessmann","Vaillant","Elm Leblanc","Bosch","Bulex","Frisquet","Geminox","Ariston","Fondital","Ferroli","Baxi","Beretta","Weishaupt","Riello","Thermor","Deville","Acova","Remeha","Immergas","Unical","Chappée","Domusa"];
-
-  const parseText=(text,type)=>{
-    let marque="",modele="",numSerie="",puissance="",fluide="";
-    const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
-
-    // 1. MARQUE
-    for(const m of MARQUES){
-      if(text.toLowerCase().includes(m.toLowerCase())){ marque=m; break; }
-    }
-
-    // 2. MODÈLE — cherche "MOD" ou "Modèle" ou "Model"
-    const modPatterns=[
-      /MOD\s+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]od[eè]le?\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]odel\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-      /[Mm]odello\s*[:\s]+([A-Za-z0-9][A-Za-z0-9\s.\-_]{3,30})/,
-    ];
-    for(const p of modPatterns){
-      const m=text.match(p);
-      if(m){ modele=m[1].trim().split('\n')[0].trim().replace(/\s+/g,' ').slice(0,30); break; }
-    }
-    // Fallback — pattern alphanum classique type NECTRA TOP 2.23 FF
-    if(!modele){
-      const mm=text.match(/[A-Z]{3,}[\s\-][A-Z]{2,}[\s\-]?\d+[.,]?\d*[\s]?[A-Z]{0,4}/);
-      if(mm) modele=mm[0].trim().slice(0,30);
-    }
-
-    // 3. N° SÉRIE — cherche "N°", "Serial", "Matr", "S/N"
-    const seriePatterns=[
-      /[Nn][°º]\s*([A-Z0-9]{5,20}[-]?[A-Z0-9]{0,8})/,
-      /[Ss]\/?[Nn]\s*[:\s]*([A-Z0-9]{5,20})/,
-      /[Mm]atr\.?\s*[Nn][°o]\s*[:\s]*([A-Z0-9]{5,20})/,
-      /[Ss]er[ie]+[^:]*[:\s]+([A-Z0-9]{5,20})/,
-      /\b(\d{9,15}[-]?\d{0,4})\b/,
-      /\b([A-Z]\d{7,15})\b/,
-    ];
-    for(const p of seriePatterns){
-      const m=text.match(p);
-      if(m){ numSerie=(m[1]||m[0]).trim(); break; }
-    }
-
-    // 4. PUISSANCE — cherche kW
-    const puissPatterns=[
-      /(\d+[.,]\d+)\s*k[Ww]/,
-      /(\d+)\s*k[Ww]/,
-    ];
-    for(const p of puissPatterns){
-      const m=text.match(p);
-      if(m){ puissance=m[0].replace(/\s/g,""); break; }
-    }
-
-    // 5. FLUIDE — seulement clim/PAC
-    if(type==="Climatisation"||type==="Pompe à chaleur"){
-      const fm=text.match(/R[-]?(\d{2,3}[A-Za-z]*)/i);
-      if(fm) fluide=fm[0].replace(/\s/g,"");
-    }
-
-    return {marque,modele,numSerie,puissance,fluide,rawText:text};
-  };
+  const champs=isBruleur
+    ?[["marque","Marque du brûleur"],["modele","Modèle / type"],["numSerie","N° de série"]]
+    :[["marque","Marque"],["modele","Modèle"],["numSerie","N° de série"],["puissance","Puissance"],...((equip?.type==="Climatisation"||equip?.type==="Pompe à chaleur")?[["fluide","Fluide frigorigène"]]:[] )];
 
   return(
     <div className="modal-overlay"><div className="modal" style={{maxWidth:520}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div className="modal-title" style={{marginBottom:0}}>📷 Scanner la plaque</div>
+        <div className="modal-title" style={{marginBottom:0}}>{isBruleur?"📷 Plaque du brûleur":"📷 Scanner la plaque"}</div>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
       </div>
 
@@ -1361,7 +1403,7 @@ function ScannerOCR({onResult, onClose, equip}) {
         <div style={{background:"var(--success)20",border:"1px solid var(--success)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:"0.82rem",color:"var(--success)",fontWeight:600}}>
           ✓ Analyse terminée — vérifiez et corrigez si nécessaire
         </div>
-        {[["marque","Marque"],["modele","Modèle"],["numSerie","N° de série"],["puissance","Puissance"],...((equip?.type==="Climatisation"||equip?.type==="Pompe à chaleur")?[["fluide","Fluide frigorigène"]]:[] )].map(([k,l])=>(
+        {champs.map(([k,l])=>(
           <div key={k} className="form-group" style={{marginBottom:10}}>
             <label>{l}</label>
             <input value={result[k]||""} onChange={e=>setResult(p=>({...p,[k]:e.target.value}))}
@@ -1382,12 +1424,13 @@ function ScannerOCR({onResult, onClose, equip}) {
 
 function EquipForm({equip, onChange, onDelete, index}) {
   const s=(k,v)=>onChange({...equip,[k]:v});
-  const [scanTarget,setScanTarget]=useState(null); // null | "ext" | {idx:n} (unité intérieure n)
+  const [scanTarget,setScanTarget]=useState(null); // null | "ext" | "bruleur" | "intPac" | {idx:n} (unité intérieure n)
   const isClim=equip.type==="Climatisation";
   const isPac=equip.type==="Pompe à chaleur";
   const isFioul=equip.type==="Chaudière fioul";
   const isGaz=equip.type==="Chaudière gaz"||equip.type==="Chauffe-eau gaz";
-  const isChaud=isGaz||isFioul;
+  const bloc={background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"};
+  const titreBloc={fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"};
 
   const handleScanResult=res=>{
     const target=scanTarget;
@@ -1401,17 +1444,18 @@ function EquipForm({equip, onChange, onDelete, index}) {
     else if(isClim){ onChange({...equip,marqueClim:res.marque||equip.marqueClim,modeleExt:res.modele||equip.modeleExt,numSerieExt:res.numSerie||equip.numSerieExt,puissanceClim:res.puissance||equip.puissanceClim,fluideClim:res.fluide||equip.fluideClim}); }
     else if(isPac&&target==="intPac"){ onChange({...equip,marqueIntPac:res.marque||equip.marqueIntPac,modeleIntPac:res.modele||equip.modeleIntPac,numSerieIntPac:res.numSerie||equip.numSerieIntPac}); }
     else if(isPac){ onChange({...equip,marquePac:res.marque||equip.marquePac,modelePac:res.modele||equip.modelePac,numSeriePac:res.numSerie||equip.numSeriePac,puissancePac:res.puissance||equip.puissancePac}); }
+    else if(isFioul&&target==="bruleur"){ onChange({...equip,marqueBruleur:res.marque||equip.marqueBruleur,modeleBruleur:res.modele||equip.modeleBruleur,numSerieBruleur:res.numSerie||equip.numSerieBruleur}); }
     else{ onChange({...equip,marque:res.marque||equip.marque,modele:res.modele||equip.modele,numSerie:res.numSerie||equip.numSerie,puissance:res.puissance||equip.puissance}); }
   };
 
   return (
     <>
-    {scanTarget!==null&&<ScannerOCR equip={equip} onResult={handleScanResult} onClose={()=>setScanTarget(null)}/>}
+    {scanTarget!==null&&<ScannerOCR equip={equip} cible={scanTarget==="bruleur"?"bruleur":"appareil"} onResult={handleScanResult} onClose={()=>setScanTarget(null)}/>}
     <div style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:"0.85rem",color:"var(--accent)"}}>{EQUIP_ICON(equip.type)} Équipement {index+1} — {equip.type}</div>
         <div style={{display:"flex",gap:6}}>
-          {!isClim&&<button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>}
+          {!isClim&&!isFioul&&<button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>}
           <button className="btn btn-danger btn-sm" onClick={onDelete}>🗑️</button>
         </div>
       </div>
@@ -1429,9 +1473,9 @@ function EquipForm({equip, onChange, onDelete, index}) {
               {TYPES_CLIM.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
-          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+          <div className="form-group full" style={bloc}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+              <div style={titreBloc}>🔌 Groupe extérieur</div>
               <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>
             </div>
             <div className="form-grid">
@@ -1444,9 +1488,9 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </div>
           </div>
           {(equip.unitesInt||[{emplacement:"",modele:"",numSerie:"",puissance:""}]).map((ui,i)=>(
-            <div key={i} className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+            <div key={i} className="form-group full" style={bloc}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
+                <div style={titreBloc}>❄️ Unité intérieure {(equip.unitesInt||[]).length>1?i+1:""}</div>
                 <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget({idx:i})}>📷 Scanner</button>
               </div>
               <div className="form-grid">
@@ -1459,8 +1503,8 @@ function EquipForm({equip, onChange, onDelete, index}) {
           ))}
         </>}
         {isPac&&<>
-          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
-            <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",marginBottom:10,textTransform:"uppercase"}}>🔌 Groupe extérieur</div>
+          <div className="form-group full" style={bloc}>
+            <div style={{...titreBloc,marginBottom:10}}>🔌 Groupe extérieur</div>
             <div className="form-grid">
               <div className="form-group"><label>Marque</label><MarqueInput value={equip.marquePac} onChange={v=>s("marquePac",v)} options={MARQUES_PAC} listId="dl-marque-pac"/></div>
               <div className="form-group"><label>Modèle</label><input value={equip.modelePac||""} onChange={e=>s("modelePac",e.target.value)}/></div>
@@ -1471,9 +1515,9 @@ function EquipForm({equip, onChange, onDelete, index}) {
               <div className="form-group"><label>Fluide frigorigène</label><input value={equip.fluidePac||""} onChange={e=>s("fluidePac",e.target.value)}/></div>
             </div>
           </div>
-          <div className="form-group full" style={{background:"var(--surface)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+          <div className="form-group full" style={bloc}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:"0.78rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase"}}>🏠 Unité intérieure</div>
+              <div style={titreBloc}>🏠 Unité intérieure</div>
               <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("intPac")}>📷 Scanner</button>
             </div>
             <div className="form-grid">
@@ -1483,8 +1527,43 @@ function EquipForm({equip, onChange, onDelete, index}) {
             </div>
           </div>
         </>}
-        {isChaud&&<><div className="form-group"><label>Marque</label><MarqueInput value={equip.marque} onChange={v=>s("marque",v)} options={MARQUES_CHAUDIERE} listId="dl-marque-chaud"/></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div>{isGaz&&<div className="form-group"><label>Type de gaz</label><select value={equip.gaz||"Gaz naturel"} onChange={e=>s("gaz",e.target.value)}><option>Gaz naturel</option><option>Propane</option><option>Butane</option></select></div>}</>}
-        {isFioul&&<><div className="form-group"><label>Marque brûleur</label><input value={equip.marqueBruleur||""} onChange={e=>s("marqueBruleur",e.target.value)}/></div><div className="form-group"><label>Modèle brûleur</label><input value={equip.modeleBruleur||""} onChange={e=>s("modeleBruleur",e.target.value)}/></div><div className="form-group"><label>Marque gicleur</label><select value={equip.marqueGicleur||"Steinen"} onChange={e=>s("marqueGicleur",e.target.value)}>{MARQUES_GICLEUR.map(m=><option key={m}>{m}</option>)}</select></div><div className="form-group"><label>Débit (gal/h)</label><input value={equip.debitGicleur||""} onChange={e=>s("debitGicleur",e.target.value)}/></div><div className="form-group"><label>Angle</label><select value={equip.angleGicleur||"60°"} onChange={e=>s("angleGicleur",e.target.value)}>{ANGLES_GICLEUR.map(a=><option key={a}>{a}</option>)}</select></div><div className="form-group"><label>Spectre</label><select value={equip.spectreGicleur||"S (solide)"} onChange={e=>s("spectreGicleur",e.target.value)}>{SPECTRES_GICLEUR.map(sp=><option key={sp}>{sp}</option>)}</select></div></>}
+        {isGaz&&<><div className="form-group"><label>Marque</label><MarqueInput value={equip.marque} onChange={v=>s("marque",v)} options={MARQUES_CHAUDIERE} listId="dl-marque-chaud"/></div><div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div><div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div><div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div><div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div><div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div><div className="form-group"><label>Type de gaz</label><select value={equip.gaz||"Gaz naturel"} onChange={e=>s("gaz",e.target.value)}><option>Gaz naturel</option><option>Propane</option><option>Butane</option></select></div></>}
+        {isFioul&&<>
+          {/* CHAUDIÈRE FIOUL : bloc chaudière */}
+          <div className="form-group full" style={bloc}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={titreBloc}>🛢️ Chaudière</div>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("ext")}>📷 Scanner</button>
+            </div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><MarqueInput value={equip.marque} onChange={v=>s("marque",v)} options={MARQUES_CHAUDIERE} listId="dl-marque-chaud"/></div>
+              <div className="form-group"><label>Modèle</label><input value={equip.modele||""} onChange={e=>s("modele",e.target.value)}/></div>
+              <div className="form-group"><label>N° série</label><input value={equip.numSerie||""} onChange={e=>s("numSerie",e.target.value)}/></div>
+              <div className="form-group"><label>Puissance</label><input value={equip.puissance||""} onChange={e=>s("puissance",e.target.value)}/></div>
+              <div className="form-group"><label>Année</label><input value={equip.annee||""} onChange={e=>s("annee",e.target.value)}/></div>
+              <div className="form-group"><label>Conduit</label><input value={equip.conduit||""} onChange={e=>s("conduit",e.target.value)}/></div>
+            </div>
+          </div>
+          {/* CHAUDIÈRE FIOUL : bloc brûleur + gicleur */}
+          <div className="form-group full" style={bloc}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={titreBloc}>🔥 Brûleur</div>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setScanTarget("bruleur")}>📷 Scanner</button>
+            </div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><MarqueInput value={equip.marqueBruleur} onChange={v=>s("marqueBruleur",v)} options={MARQUES_BRULEUR} listId="dl-marque-bruleur"/></div>
+              <div className="form-group"><label>Modèle</label><input value={equip.modeleBruleur||""} onChange={e=>s("modeleBruleur",e.target.value)}/></div>
+              <div className="form-group full"><label>N° série</label><input value={equip.numSerieBruleur||""} onChange={e=>s("numSerieBruleur",e.target.value)}/></div>
+            </div>
+            <div style={{...titreBloc,margin:"14px 0 10px",paddingTop:12,borderTop:"1px solid var(--border)"}}>💧 Gicleur</div>
+            <div className="form-grid">
+              <div className="form-group"><label>Marque</label><select value={equip.marqueGicleur||"Steinen"} onChange={e=>s("marqueGicleur",e.target.value)}>{MARQUES_GICLEUR.map(m=><option key={m}>{m}</option>)}</select></div>
+              <div className="form-group"><label>Débit (gal/h)</label><input value={equip.debitGicleur||""} onChange={e=>s("debitGicleur",e.target.value)} placeholder="0,60"/></div>
+              <div className="form-group"><label>Angle</label><select value={equip.angleGicleur||"60°"} onChange={e=>s("angleGicleur",e.target.value)}>{ANGLES_GICLEUR.map(a=><option key={a}>{a}</option>)}</select></div>
+              <div className="form-group"><label>Spectre</label><select value={equip.spectreGicleur||"S (solide)"} onChange={e=>s("spectreGicleur",e.target.value)}>{SPECTRES_GICLEUR.map(sp=><option key={sp}>{sp}</option>)}</select></div>
+            </div>
+          </div>
+        </>}
         <div style={{gridColumn:"1/-1",marginTop:6,fontSize:"0.75rem",fontWeight:700,color:"var(--muted)",textTransform:"uppercase",borderTop:"1px solid var(--border)",paddingTop:12}}>📄 Contrat</div>
         <div className="form-group"><label>Type contrat</label><select value={equip.contrat||""} onChange={e=>s("contrat",e.target.value)}><option value="">Aucun</option><option>Contrat entretien</option><option>Contrat pièces et MO</option><option>Autre</option></select></div>
         {equip.contrat&&<><div className="form-group"><label>N° contrat</label><input value={equip.numContrat||""} onChange={e=>s("numContrat",e.target.value)}/></div><div className="form-group"><label>Échéance</label><input type="date" value={equip.echeanceContrat||""} onChange={e=>s("echeanceContrat",e.target.value)}/></div></>}
@@ -1507,6 +1586,7 @@ function ModalClient({client, onSave, onClose}) {
   const updateEquip=(i,e)=>setF(p=>{const eq=[...p.equipements];eq[i]=e;return{...p,equipements:eq};});
   const delEquip=(i)=>setF(p=>({...p,equipements:p.equipements.filter((_,j)=>j!==i)}));
   const photoInputRef=useRef(null);
+  const [photoLoading,setPhotoLoading]=useState(false);
   // Autocomplétion d'adresse via le service de géocodage de l'IGN (Base Adresse
   // Nationale). Gratuit et sans clé. L'ancien api-adresse.data.gouv.fr a été
   // décommissionné fin janvier 2026.
@@ -1536,8 +1616,30 @@ function ModalClient({client, onSave, onClose}) {
     setF(p=>({...p,adresse:a.voie||a.label,codePostal:a.cp,ville:a.ville}));
     setAddrSug([]); setShowAddrSug(false);
   };
-  const handlePhoto=e=>{const files=Array.from(e.target.files);if((f.photos||[]).length+files.length>5){alert("Max 5 photos");return;}files.forEach(file=>{const r=new FileReader();r.onload=ev=>setF(p=>({...p,photos:[...(p.photos||[]),{url:ev.target.result,name:file.name,date:new Date().toISOString().slice(0,10)}]}));r.readAsDataURL(file);});};
+  // Photos compressées automatiquement (voir compresserImage) pour que la fiche
+  // client reste sous la limite de 1 Mo de Firestore.
+  const handlePhoto=async e=>{
+    const files=Array.from(e.target.files);
+    e.target.value="";
+    if((f.photos||[]).length+files.length>5){alert("Max 5 photos");return;}
+    setPhotoLoading(true);
+    try{
+      for(const file of files){
+        const url=await compresserImage(file);
+        setF(p=>({...p,photos:[...(p.photos||[]),{url,name:file.name,date:new Date().toISOString().slice(0,10)}]}));
+      }
+    }catch(err){ alert("Photo non ajoutée : "+err.message); }
+    setPhotoLoading(false);
+  };
   const delPhoto=i=>setF(p=>({...p,photos:p.photos.filter((_,j)=>j!==i)}));
+  const enregistrer=()=>{
+    const taille=JSON.stringify(f).length;
+    if(taille>TAILLE_MAX_CLIENT){
+      alert(`Cette fiche client est trop lourde pour être enregistrée (${Math.round(taille/1000)} Ko, maximum ${TAILLE_MAX_CLIENT/1000} Ko). Supprimez une ou deux photos.`);
+      return;
+    }
+    onSave(f);
+  };
   return (
     <div className="modal-overlay"><div className="modal modal-xl">
       <div className="modal-title">{client?"Modifier le client":"Nouveau client"}</div>
@@ -1603,7 +1705,7 @@ function ModalClient({client, onSave, onClose}) {
       {/* PHOTOS */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"16px 0 10px"}}>
         <div style={{fontSize:"0.8rem",fontWeight:600,color:"var(--accent)"}}> 📷 Photos ({(f.photos||[]).length}/5)</div>
-        {(f.photos||[]).length<5&&<button className="btn btn-secondary btn-sm" onClick={()=>photoInputRef.current?.click()}>📷 Ajouter</button>}
+        {(f.photos||[]).length<5&&<button className="btn btn-secondary btn-sm" onClick={()=>photoInputRef.current?.click()} disabled={photoLoading}>{photoLoading?"⏳ Compression...":"📷 Ajouter"}</button>}
       </div>
       <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handlePhoto}/>
       {(f.photos||[]).length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:14}}>{f.photos.map((p,i)=><div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",aspectRatio:"1",border:"1px solid var(--border)"}}><img src={p.url} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>delPhoto(i)} style={{position:"absolute",top:4,right:4,width:22,height:22,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",cursor:"pointer",fontSize:"0.7rem"}}>✕</button></div>)}</div>}
@@ -1616,7 +1718,7 @@ function ModalClient({client, onSave, onClose}) {
       {f.equipements.map((eq,i)=><EquipForm key={eq.id||i} equip={eq} index={i} onChange={e=>updateEquip(i,e)} onDelete={()=>delEquip(i)}/>)}
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-        <button className="btn btn-primary" onClick={()=>onSave(f)} disabled={!f.nom}>Enregistrer</button>
+        <button className="btn btn-primary" onClick={enregistrer} disabled={!f.nom||photoLoading}>Enregistrer</button>
       </div>
     </div></div>
   );
@@ -2212,7 +2314,7 @@ function PageClients({clients, setClients, docs, setDocs, rdvs, societe}) {
                 <div key={i} style={{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:9,padding:"12px 14px"}}>
                   <div style={{fontWeight:700,fontSize:"0.85rem",marginBottom:8,color:"var(--accent)"}}>{EQUIP_ICON(e.type)} {e.type}</div>
                   {e.type==="Climatisation"&&<><div style={{fontSize:"0.78rem"}}>{e.marqueClim} — {e.typeClim}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{e.modele} · {e.puissanceClim} · {e.anneeClim}</div></>}
-                  {(e.type==="Chaudière gaz"||e.type==="Chauffe-eau gaz"||e.type==="Chaudière fioul")&&<><div style={{fontSize:"0.78rem"}}>{e.marque} {e.modele}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{e.puissance} · {e.annee} · {e.conduit}</div>{e.numSerie&&<div style={{fontSize:"0.75rem",color:"var(--muted)"}}>N° {e.numSerie}</div>}{e.contrat&&<div style={{fontSize:"0.75rem",marginTop:4}}><span className="badge badge-info" style={{fontSize:"0.65rem"}}>{e.contrat}</span></div>}</>}
+                  {(e.type==="Chaudière gaz"||e.type==="Chauffe-eau gaz"||e.type==="Chaudière fioul")&&<><div style={{fontSize:"0.78rem"}}>{e.marque} {e.modele}</div><div style={{fontSize:"0.78rem",color:"var(--muted)"}}>{e.puissance} · {e.annee} · {e.conduit}</div>{e.numSerie&&<div style={{fontSize:"0.75rem",color:"var(--muted)"}}>N° {e.numSerie}</div>}{e.type==="Chaudière fioul"&&(e.marqueBruleur||e.modeleBruleur||e.numSerieBruleur)&&<div style={{fontSize:"0.75rem",color:"var(--muted)",marginTop:3}}>🔥 Brûleur : {texteBruleur(e)}</div>}{e.type==="Chaudière fioul"&&e.debitGicleur&&<div style={{fontSize:"0.75rem",color:"var(--muted)"}}>💧 Gicleur : {texteGicleur(e)}</div>}{e.contrat&&<div style={{fontSize:"0.75rem",marginTop:4}}><span className="badge badge-info" style={{fontSize:"0.65rem"}}>{e.contrat}</span></div>}</>}
                   {(e.type==="Chaudière gaz"||e.type==="Chaudière fioul"||e.type==="Climatisation"||e.type==="Pompe à chaleur")&&
                     <button className="btn btn-secondary btn-sm" style={{marginTop:8,width:"100%"}} onClick={()=>{
                       const attType=e.type==="Chaudière fioul"?"Attestation Fioul":e.type==="Climatisation"?"Attestation Clim":e.type==="Pompe à chaleur"?"Attestation PAC":"Attestation Gaz";
@@ -2546,7 +2648,7 @@ function LoginScreen({onLogin}) {
       <div style={{background:"#161b27",border:"1px solid #252d42",borderRadius:20,padding:"48px 40px",width:"100%",maxWidth:380,textAlign:"center",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{fontSize:"3rem",marginBottom:8}}>🔥</div>
         <div style={{fontFamily:"serif",fontSize:"1.8rem",fontWeight:900,color:"#f97316",marginBottom:4}}>ThermoPro</div>
-        <div style={{fontSize:"0.85rem",color:"#64748b",marginBottom:32}}>Rouvet Chauffage — Accès sécurisé</div>
+        <div style={{fontSize:"0.85rem",color:"#64748b",marginBottom:32}}>Albert Énergie — Accès sécurisé</div>
         <div style={{position:"relative",marginBottom:16}}>
           <input type={show?"text":"password"} value={pwd} onChange={e=>{setPwd(e.target.value);setError(false);}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Mot de passe"
             style={{width:"100%",padding:"14px 48px 14px 16px",borderRadius:12,border:`1px solid ${error?"#ef4444":"#252d42"}`,background:"#0d1117",color:"#e2e8f0",fontSize:"1rem",outline:"none",boxSizing:"border-box"}} autoFocus/>
@@ -2570,8 +2672,11 @@ export default function App() {
   const [catalogue,setCatalogue]=useState(INIT_CATALOGUE);
   const [societe,setSociete]=useState(INIT_SOCIETE);
   const [loaded,setLoaded]=useState(false);
+  const [erreurChargement,setErreurChargement]=useState(false);
   const [theme,setTheme]=useState(()=>{ try{ return localStorage.getItem("theme")||"clair"; }catch{ return "clair"; } });
-  const docsIdsRef=useRef(new Set());
+  // État du dernier enregistrement de chaque élément (voir sauvegarderItems)
+  const docsSnapRef=useRef(new Map());
+  const clientsSnapRef=useRef(new Map());
   const [isOnline,setIsOnline]=useState(()=>navigator.onLine);
 
   // Détection de la connexion — affiche un bandeau quand le réseau est absent.
@@ -2593,19 +2698,34 @@ export default function App() {
   // Chargement initial Firebase
   useEffect(()=>{
     const load=async()=>{
-      const c=await charger("clients"); if(c) setClients(c);
+      // CLIENTS : un document par client (sous-collection clientsItems)
+      const itemsClients=await chargerItems("clientsItems");
+      if(itemsClients===null){ setErreurChargement(true); return; }
+      if(itemsClients.length>0){
+        setClients(itemsClients);
+        clientsSnapRef.current=snapshotItems(itemsClients);
+      } else {
+        // Migration : anciens clients stockés en un seul bloc
+        const oldClients=await charger("clients");
+        if(oldClients && oldClients.length>0){
+          setClients(oldClients);
+          sauvegarderItems("clientsItems", oldClients, clientsSnapRef, "fiche(s) client")
+            .then(ok=>{ if(ok) sauvegarder("clients", []); }); // vide l'ancien bloc une fois la migration réussie
+        }
+      }
       const r=await charger("rdvs"); if(r) setRdvs(r);
-      const newDocs=await chargerDocsItems();
-      if(newDocs && newDocs.length>0){
-        setDocs(newDocs);
-        docsIdsRef.current=new Set(newDocs.map(x=>String(x.id)));
+      // DOCUMENTS : un document par bon / attestation / facture (sous-collection docsItems)
+      const itemsDocs=await chargerItems("docsItems");
+      if(itemsDocs===null){ setErreurChargement(true); return; }
+      if(itemsDocs.length>0){
+        setDocs(itemsDocs);
+        docsSnapRef.current=snapshotItems(itemsDocs);
       } else {
         // Migration : anciens documents stockés en un seul bloc
         const oldDocs=await charger("docs");
         if(oldDocs && oldDocs.length>0){
           setDocs(oldDocs);
-          docsIdsRef.current=new Set(oldDocs.map(x=>String(x.id)));
-          sauvegarderDocs(oldDocs, new Set()); // migration silencieuse vers le nouveau format
+          sauvegarderItems("docsItems", oldDocs, docsSnapRef, "document(s)");
         }
       }
       const dv=await charger("devis"); if(dv) setDevis(dv);
@@ -2617,15 +2737,29 @@ export default function App() {
   },[]);
 
   // Sauvegarde auto — seulement après chargement complet
-  useEffect(()=>{ if(loaded) sauvegarder("clients",clients); },[clients]);
-  useEffect(()=>{ clients.forEach(c=>(c.equipements||[]).forEach(e=>{ addMarquePerso(e.marque); addMarquePerso(e.marqueClim); addMarquePerso(e.marquePac); })); },[clients]);
+  useEffect(()=>{ if(loaded) sauvegarderItems("clientsItems", clients, clientsSnapRef, "fiche(s) client"); },[clients]);
+  useEffect(()=>{ clients.forEach(c=>(c.equipements||[]).forEach(e=>{ addMarquePerso(e.marque); addMarquePerso(e.marqueClim); addMarquePerso(e.marquePac); addMarquePerso(e.marqueBruleur); })); },[clients]);
   useEffect(()=>{ if(loaded) sauvegarder("rdvs",rdvs); },[rdvs]);
-  useEffect(()=>{ if(loaded) sauvegarderDocs(docs, docsIdsRef.current).then(ids=>{ docsIdsRef.current=ids; }); },[docs]);
+  useEffect(()=>{ if(loaded) sauvegarderItems("docsItems", docs, docsSnapRef, "document(s)"); },[docs]);
   useEffect(()=>{ if(loaded) sauvegarder("devis",devis); },[devis]);
   useEffect(()=>{ if(loaded) sauvegarder("societe",societe); },[societe]);
   useEffect(()=>{ if(loaded) sauvegarder("catalogue",catalogue); },[catalogue]);
 
   if(!loggedIn) return <><style>{CSS}</style><LoginScreen onLogin={()=>setLoggedIn(true)}/></>;
+
+  // Chargement impossible : on bloque l'appli plutôt que de risquer d'écraser
+  // les vraies données en ligne avec des données vides ou de démonstration.
+  if(erreurChargement) return (
+    <><style>{CSS}</style>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div className="card" style={{maxWidth:420,textAlign:"center"}}>
+        <div style={{fontSize:"2.5rem",marginBottom:10}}>📡</div>
+        <div className="card-title">Données impossibles à charger</div>
+        <p style={{fontSize:"0.85rem",color:"var(--muted)",marginBottom:18}}>Vérifie ta connexion internet puis recharge la page. Tes données en ligne ne sont pas touchées.</p>
+        <button className="btn btn-primary" onClick={()=>window.location.reload()}>🔄 Recharger</button>
+      </div>
+    </div></>
+  );
 
   const nbRelances=clients.reduce((total,client)=>total+(client.equipements||[]).filter(equip=>{if(!EQUIP_RELANCE.includes(equip.type))return false;return moisDepuis(getLastEntretien(client.id,docs))>=DELAI_RELANCE;}).length,0);
   const nbImpayees=docs.filter(d=>d.type==="Facture"&&d.statut==="En attente de règlement").length;
